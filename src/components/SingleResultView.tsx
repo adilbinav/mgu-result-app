@@ -16,17 +16,23 @@ import {
   ArrowRight,
   RefreshCw,
   Sparkles,
-  Info
+  Info,
+  Users
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { ExamInfo, StudentResult } from '@/lib/types';
 import { MarksheetPrint } from './MarksheetPrint';
 import { OfficialResultView } from './OfficialResultView';
+import { GradeBoosterCard } from './GradeBoosterCard';
+import { RecentPrnChips } from './RecentPrnChips';
+import { generateClassRange, savePrnToStorage } from '@/lib/student-utils';
 
 interface SingleResultViewProps {
   exams: ExamInfo[];
   isLoadingExams: boolean;
   demoMode: boolean;
+  onNavigateToBatch?: (startPrn: string, endPrn: string, examId: string) => void;
+  onSetLastCheckedScpa?: (scpa: number, examName?: string) => void;
 }
 
 const SEMESTER_FILTERS = [
@@ -56,6 +62,8 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
   exams,
   isLoadingExams,
   demoMode,
+  onNavigateToBatch,
+  onSetLastCheckedScpa,
 }) => {
   const [selectedAdmissionYear, setSelectedAdmissionYear] = useState<string>('ALL');
   const [autoDetectedYear, setAutoDetectedYear] = useState<number | null>(null);
@@ -69,6 +77,14 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
   const [result, setResult] = useState<StudentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+
+  // Auto-generate class range if PRN has enough digits
+  const classRange = React.useMemo(() => {
+    if (prn.trim().length >= 8) {
+      return generateClassRange(prn.trim(), 60);
+    }
+    return null;
+  }, [prn]);
 
   // Auto-detect admission year from first 2 digits of PRN (e.g. 210021000001 -> 2021 Batch)
   useEffect(() => {
@@ -153,6 +169,14 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
       };
 
       setResult(studentData);
+
+      // Save to recent PRNs in local storage
+      savePrnToStorage(studentData.prn, studentData.name, studentData.summary.scpa, studentData.examName);
+
+      // Update parent last checked SCPA for CGPA tracker import
+      if (onSetLastCheckedScpa) {
+        onSetLastCheckedScpa(studentData.summary.scpa, studentData.examName);
+      }
 
       // Trigger confetti if passed
       if (studentData.summary.result.toLowerCase() === 'passed') {
@@ -358,6 +382,30 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
                 onChange={e => setPrn(e.target.value.replace(/[^0-9]/g, ''))}
                 className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-base font-mono font-semibold text-slate-900 tracking-wider placeholder:tracking-normal placeholder:font-sans placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
               />
+
+              {/* Recent & Starred PRN Quick Chips */}
+              <RecentPrnChips
+                currentPrn={prn}
+                onSelectPrn={(selected) => {
+                  setPrn(selected);
+                  handleFetchResult(undefined, selected);
+                }}
+              />
+
+              {/* 1-Click Class Auto-Scan Button */}
+              {classRange && onNavigateToBatch && (
+                <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToBatch(classRange.startPrn, classRange.endPrn, selectedExamId)}
+                    className="inline-flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl font-semibold border border-indigo-200 transition-colors shadow-xs"
+                  >
+                    <Users className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>🚀 Scan My Entire Class ({classRange.startPrn.slice(-3)} to {classRange.endPrn.slice(-3)})</span>
+                  </button>
+                  <span className="text-[10px] text-slate-400 font-medium">Auto-detected college roll range (001 to 060)</span>
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-4">
@@ -400,6 +448,9 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
       {/* Result Display Section */}
       {result && (
         <div className="space-y-6">
+          {/* Grade Booster & Revaluation Analysis Card */}
+          <GradeBoosterCard courses={result.courses} scpa={result.summary.scpa} />
+
           {/* Action Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print bg-white p-3 sm:px-5 sm:py-3.5 rounded-2xl border border-slate-200 shadow-sm">
             {/* View Format Switcher */}

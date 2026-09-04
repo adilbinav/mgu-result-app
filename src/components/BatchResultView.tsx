@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { ExamInfo, BatchResultResponse, StudentResult } from '@/lib/types';
 import { MarksheetPrint } from './MarksheetPrint';
+import { generateClassRange } from '@/lib/student-utils';
 
 const ADMISSION_YEARS = [
   'ALL',
@@ -38,22 +39,32 @@ interface BatchResultViewProps {
   exams: ExamInfo[];
   isLoadingExams: boolean;
   demoMode: boolean;
+  initialStartPrn?: string;
+  initialEndPrn?: string;
+  initialExamId?: string;
 }
 
 export const BatchResultView: React.FC<BatchResultViewProps> = ({
   exams,
   isLoadingExams,
   demoMode,
+  initialStartPrn,
+  initialEndPrn,
+  initialExamId,
 }) => {
   const [selectedAdmissionYear, setSelectedAdmissionYear] = useState<string>('ALL');
   const [autoDetectedYear, setAutoDetectedYear] = useState<number | null>(null);
-  const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [startPrn, setStartPrn] = useState<string>('210021000001');
-  const [endPrn, setEndPrn] = useState<string>('210021000015');
+  const [selectedExamId, setSelectedExamId] = useState<string>(initialExamId || '');
+  const [startPrn, setStartPrn] = useState<string>(initialStartPrn || '210021000001');
+  const [endPrn, setEndPrn] = useState<string>(initialEndPrn || '210021000015');
 
   const [loading, setLoading] = useState<boolean>(false);
   const [batchData, setBatchData] = useState<BatchResultResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Search and status filter inside leaderboard
+  const [leaderboardSearch, setLeaderboardSearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'passed' | 'failed'>('all');
 
   // Auto-detect batch from first 2 digits of start PRN
   useEffect(() => {
@@ -196,29 +207,47 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
     document.body.removeChild(link);
   };
 
-  // Sorting
+  // Sorting & Filtering
   const sortedStudents = React.useMemo(() => {
     if (!batchData) return [];
-    return [...batchData.students].sort((a, b) => {
-      let valA: any = a.summary.scpa;
-      let valB: any = b.summary.scpa;
+    return [...batchData.students]
+      .filter(s => {
+        const query = leaderboardSearch.trim().toLowerCase();
+        const matchesSearch = !query || 
+          s.name.toLowerCase().includes(query) || 
+          s.prn.includes(query);
+        const matchesStatus = statusFilter === 'all' || 
+          (statusFilter === 'passed' && s.summary.result.toLowerCase() === 'passed') ||
+          (statusFilter === 'failed' && s.summary.result.toLowerCase() !== 'passed');
+        return matchesSearch && matchesStatus;
+      })
+      .sort((a, b) => {
+        let valA: any = a.summary.scpa;
+        let valB: any = b.summary.scpa;
 
-      if (sortField === 'name') {
-        valA = a.name.toLowerCase();
-        valB = b.name.toLowerCase();
-      } else if (sortField === 'prn') {
-        valA = a.prn;
-        valB = b.prn;
-      } else if (sortField === 'totalMarks') {
-        valA = a.summary.totalMarks;
-        valB = b.summary.totalMarks;
-      }
+        if (sortField === 'name') {
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+        } else if (sortField === 'prn') {
+          valA = a.prn;
+          valB = b.prn;
+        } else if (sortField === 'totalMarks') {
+          valA = a.summary.totalMarks;
+          valB = b.summary.totalMarks;
+        }
 
-      if (valA < valB) return sortAsc ? -1 : 1;
-      if (valA > valB) return sortAsc ? 1 : -1;
-      return 0;
-    });
-  }, [batchData, sortField, sortAsc]);
+        if (valA < valB) return sortAsc ? -1 : 1;
+        if (valA > valB) return sortAsc ? 1 : -1;
+        return 0;
+      });
+  }, [batchData, sortField, sortAsc, leaderboardSearch, statusFilter]);
+
+  const handleAutoClassScan = () => {
+    const range = generateClassRange(startPrn, 60);
+    setStartPrn(range.startPrn);
+    setEndPrn(range.endPrn);
+    handleFetchBatch(undefined, range.startPrn, range.endPrn);
+  };
 
   const toggleSort = (field: 'scpa' | 'name' | 'prn' | 'totalMarks') => {
     if (sortField === field) {
@@ -326,9 +355,19 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
           {/* PRN Range Inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
             <div className="sm:col-span-4 space-y-2">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Starting PRN <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  Starting PRN <span className="text-rose-500">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleAutoClassScan}
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline flex items-center gap-1"
+                >
+                  <Users className="w-3 h-3 text-indigo-500" />
+                  Whole Class (01-60)
+                </button>
+              </div>
               <input
                 type="text"
                 value={startPrn}
@@ -489,6 +528,38 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                 <FileSpreadsheet className="w-4 h-4" />
                 <span>Export CSV Spreadsheet</span>
               </button>
+            </div>
+
+            {/* Filter toolbar */}
+            <div className="px-4 sm:px-6 py-2.5 bg-slate-100/70 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs">
+              <div className="relative w-full sm:w-64">
+                <input
+                  type="text"
+                  placeholder="Filter by student name or PRN..."
+                  value={leaderboardSearch}
+                  onChange={(e) => setLeaderboardSearch(e.target.value)}
+                  className="w-full bg-white border border-slate-300 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 shadow-2xs"
+                />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+              </div>
+
+              <div className="flex items-center gap-1 w-full sm:w-auto justify-end">
+                <span className="text-slate-500 text-[11px] font-medium mr-1">Filter:</span>
+                {(['all', 'passed', 'failed'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setStatusFilter(mode)}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-colors ${
+                      statusFilter === mode 
+                        ? 'bg-white text-blue-700 shadow-xs border border-slate-300 font-bold' 
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Mobile Leaderboard Cards (sm:hidden) */}

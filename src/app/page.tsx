@@ -1,18 +1,37 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Navbar } from '@/components/Navbar';
+import { Navbar, NavTab } from '@/components/Navbar';
 import { SingleResultView } from '@/components/SingleResultView';
 import { BatchResultView } from '@/components/BatchResultView';
+import { CgpaTrackerView } from '@/components/CgpaTrackerView';
+import { StudentCompareView } from '@/components/StudentCompareView';
 import { ExamInfo } from '@/lib/types';
 import { ShieldAlert, ExternalLink, School, Sparkles, CheckCircle2 } from 'lucide-react';
 
 export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<'single' | 'batch'>('single');
+  const [activeTab, setActiveTab] = useState<NavTab>('single');
   const [exams, setExams] = useState<ExamInfo[]>([]);
   const [isLoadingExams, setIsLoadingExams] = useState<boolean>(true);
   const [isLive, setIsLive] = useState<boolean>(true);
   const [demoMode, setDemoMode] = useState<boolean>(false);
+
+  // Batch navigation preset
+  const [batchPreset, setBatchPreset] = useState<{ startPrn: string; endPrn: string; examId: string } | null>(null);
+
+  // Recent SCPA for CGPA tracker
+  const [lastCheckedScpa, setLastCheckedScpa] = useState<number | undefined>();
+  const [lastCheckedSemesterName, setLastCheckedSemesterName] = useState<string | undefined>();
+
+  const handleNavigateToBatch = (startPrn: string, endPrn: string, examId: string) => {
+    setBatchPreset({ startPrn, endPrn, examId });
+    setActiveTab('batch');
+  };
+
+  const handleSetLastCheckedScpa = (scpa: number, examName?: string) => {
+    setLastCheckedScpa(scpa);
+    setLastCheckedSemesterName(examName);
+  };
 
   // Load active examinations on initial mount or when demoMode toggles
   useEffect(() => {
@@ -50,7 +69,7 @@ export default function HomePage() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* University Info Notice Banner */}
         <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-blue-900 to-indigo-900 text-white shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 no-print">
           <div className="flex items-center gap-3">
@@ -81,14 +100,33 @@ export default function HomePage() {
         </div>
 
         {/* Tab View Switch */}
-        {activeTab === 'single' ? (
+        {activeTab === 'single' && (
           <SingleResultView
             exams={exams}
             isLoadingExams={isLoadingExams}
             demoMode={demoMode}
+            onNavigateToBatch={handleNavigateToBatch}
+            onSetLastCheckedScpa={handleSetLastCheckedScpa}
           />
-        ) : (
+        )}
+        {activeTab === 'batch' && (
           <BatchResultView
+            exams={exams}
+            isLoadingExams={isLoadingExams}
+            demoMode={demoMode}
+            initialStartPrn={batchPreset?.startPrn}
+            initialEndPrn={batchPreset?.endPrn}
+            initialExamId={batchPreset?.examId}
+          />
+        )}
+        {activeTab === 'cgpa' && (
+          <CgpaTrackerView
+            lastCheckedScpa={lastCheckedScpa}
+            lastCheckedSemesterName={lastCheckedSemesterName}
+          />
+        )}
+        {activeTab === 'compare' && (
+          <StudentCompareView
             exams={exams}
             isLoadingExams={isLoadingExams}
             demoMode={demoMode}

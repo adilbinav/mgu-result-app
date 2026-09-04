@@ -70,3 +70,35 @@ export interface BatchResultResponse {
   students: StudentResult[];
   isDemo?: boolean;
 }
+
+export interface SavedPrn {
+  prn: string;
+  name?: string;
+  label?: string;
+  starred?: boolean;
+  lastChecked: string;
+  examName?: string;
+  scpa?: number;
+}
+
+export interface GradeGapAnalysis {
+  courseCode: string;
+  courseTitle: string;
+  currentGrade: string;
+  currentMarks: number;
+  maxMarks: number;
+  percentage: number;
+  nextGrade: string | null;
+  marksNeeded: number | null;
+  isBorderlinePass: boolean;
+  esaMarksNeededForPass?: number;
+  recommendRevaluation: boolean;
+}
+
+export interface SemesterRecord {
+  semester: number;
+  name: string;
+  scpa: number;
+  credits: number;
+  completed: boolean;
+}
