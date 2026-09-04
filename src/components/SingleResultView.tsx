@@ -401,44 +401,44 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
       {result && (
         <div className="space-y-6">
           {/* Action Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 no-print bg-white px-5 py-3.5 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print bg-white p-3 sm:px-5 sm:py-3.5 rounded-2xl border border-slate-200 shadow-sm">
             {/* View Format Switcher */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+            <div className="grid grid-cols-2 sm:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setViewFormat('official')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg transition-all text-center ${
                   viewFormat === 'official'
                     ? 'bg-white text-blue-900 shadow-sm font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>🏛️ Official Website Format</span>
+                <span>🏛️ Official Format</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewFormat('modern')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg transition-all text-center ${
                   viewFormat === 'modern'
                     ? 'bg-white text-blue-900 shadow-sm font-bold'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <span>✨ Modern Dashboard</span>
+                <span>✨ Modern View</span>
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 onClick={handleShare}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 <Share2 className="w-3.5 h-3.5" />
-                <span>{copied ? 'Copied Summary!' : 'Share'}</span>
+                <span>{copied ? 'Copied!' : 'Share'}</span>
               </button>
               <button
                 onClick={handlePrint}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Marksheet</span>
@@ -533,7 +533,61 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile Course Cards (Visible only on mobile: sm:hidden) */}
+            <div className="sm:hidden divide-y divide-slate-100">
+              {result.courses.map((course, idx) => (
+                <div key={idx} className="p-3.5 space-y-2.5 bg-white">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                        {course.code}
+                      </span>
+                      <h5 className="font-bold text-slate-900 text-xs sm:text-sm leading-snug">
+                        {course.title}
+                      </h5>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-md border ${getGradeBadge(course.grade)}`}>
+                        Grade {course.grade}
+                      </span>
+                      <div className="mt-1">
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
+                            course.result.toLowerCase() === 'passed'
+                              ? 'text-emerald-700 bg-emerald-50'
+                              : 'text-rose-700 bg-rose-50'
+                          }`}
+                        >
+                          {course.result}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-1.5 text-center text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-400">ESA</div>
+                      <div className="font-semibold text-slate-800">{course.esaMarks} <span className="text-[10px] text-slate-400">/{course.esaMax}</span></div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-400">ISA</div>
+                      <div className="font-semibold text-slate-800">{course.isaMarks} <span className="text-[10px] text-slate-400">/{course.isaMax}</span></div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Total</div>
+                      <div className="font-bold text-blue-700">{course.totalMarks} <span className="text-[10px] text-slate-400">/{course.maxMarks}</span></div>
+                    </div>
+                    <div>
+                      <div className="text-[10px] uppercase font-bold text-slate-400">Credits</div>
+                      <div className="font-semibold text-slate-800">{course.credit} <span className="text-[10px] text-slate-400">({course.creditPoint} CP)</span></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop / Tablet Table (hidden sm:block) */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
                   <tr>
@@ -599,14 +653,15 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
             </div>
 
             {/* Table Footer Totals */}
-            <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs text-slate-600 gap-4">
-              <div className="flex items-center gap-4">
+            <div className="bg-slate-50 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-600 gap-2 sm:gap-4">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span>Total Credits: <strong>{result.summary.totalCredits}</strong></span>
-                <span>Total Credit Points (CP): <strong>{result.summary.creditPoints}</strong></span>
+                <span>Credit Points (CP): <strong>{result.summary.creditPoints}</strong></span>
                 <span>Total Marks: <strong>{result.summary.totalMarks} / {result.summary.maxMarks}</strong></span>
               </div>
-              <div className="font-semibold text-slate-800">
-                Semester Credit Point Average (SCPA): <span className="text-blue-600 text-sm font-bold">{result.summary.scpa.toFixed(2)}</span>
+              <div className="font-semibold text-slate-800 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200 flex items-center justify-between sm:justify-start gap-2">
+                <span>Semester SCPA:</span>
+                <span className="text-blue-600 text-sm font-bold">{result.summary.scpa.toFixed(2)}</span>
               </div>
             </div>
           </div>
