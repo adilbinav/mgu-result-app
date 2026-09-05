@@ -38,7 +38,6 @@ const ADMISSION_YEARS = [
 interface BatchResultViewProps {
   exams: ExamInfo[];
   isLoadingExams: boolean;
-  demoMode: boolean;
   degreeLevel?: DegreeLevel;
   setDegreeLevel?: (val: DegreeLevel) => void;
   initialStartPrn?: string;
@@ -49,7 +48,6 @@ interface BatchResultViewProps {
 export const BatchResultView: React.FC<BatchResultViewProps> = ({
   exams,
   isLoadingExams,
-  demoMode,
   degreeLevel = 'UG',
   setDegreeLevel,
   initialStartPrn,
@@ -166,7 +164,6 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
           examId: selectedExamId,
           startPrn: sPrn.trim(),
           endPrn: ePrn.trim(),
-          demoMode,
           degreeLevel,
         }),
       });
@@ -181,18 +178,6 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
       setError(err.message || 'Error processing batch query.');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleFillSample = () => {
-    if (isPg) {
-      setStartPrn('230011018561');
-      setEndPrn('230011018570');
-      handleFetchBatch(undefined, '230011018561', '230011018570');
-    } else {
-      setStartPrn('210021000001');
-      setEndPrn('210021000015');
-      handleFetchBatch(undefined, '210021000001', '210021000015');
     }
   };
 
@@ -307,14 +292,14 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
         <div className="max-w-2xl">
           <div className="flex items-center gap-2">
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-              Class & Batch Result Checker
+              Class & Batch Results
             </h2>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
-              Bulk Scraper
+              Class Portal
             </span>
           </div>
           <p className="text-slate-500 text-sm mt-1">
-            Fetch results for an entire class or roll-number range at once. Generates class rankings, pass percentage, and downloadable spreadsheet.
+            Check results for an entire class or roll-number series simultaneously. Generates class rankings, pass percentage, topper analytics, and downloadable spreadsheet.
           </p>
         </div>
 
@@ -414,14 +399,9 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
                   Ending PRN <span className="text-rose-500">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={handleFillSample}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>{isPg ? 'Auto-fill PG Range (10 Students)' : 'Auto-fill Range (15 Students)'}</span>
-                </button>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  End of roll series
+                </span>
               </div>
               <input
                 type="text"
@@ -441,7 +421,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Processing Batch...</span>
+                    <span>Retrieving Results...</span>
                   </>
                 ) : (
                   <>
@@ -523,7 +503,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                 {batchData.summary.totalFound}
               </div>
               <div className="text-xs text-slate-500 mt-1 font-medium">
-                {batchData.isDemo ? 'Sample Demonstration Mode' : 'Direct MGU Records'}
+                Verified University Records
               </div>
             </div>
           </div>
@@ -786,6 +766,79 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                   })}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* How to Check Class Results Guide (shown when no batch data is loaded yet) */}
+      {!batchData && !loading && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-2.5 mb-2">
+              <span className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+                👥
+              </span>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                How to Check Results for an Entire Class
+              </h3>
+            </div>
+            <p className="text-slate-500 text-sm mb-6 max-w-2xl">
+              Quickly retrieve class performance statistics, rankings, pass percentage, and download formatted spreadsheets:
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                  1
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">Select Batch &amp; Exam</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Choose your admission batch year (e.g. 2021, 2022, 2023) and select the corresponding semester examination.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                  2
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">Set PRN Roll Range</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Enter the starting and ending Register Numbers for your class or batch (or click <strong>Whole Class (01-60)</strong> to scan automatically).
+                </p>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-5 border border-slate-200/80 space-y-2.5">
+                <div className="w-7 h-7 rounded-full bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                  3
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm">View Leaderboard &amp; Export</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Review student rankings, GPA scores, class topper, and pass percentage. Click <strong>Export CSV Spreadsheet</strong> for a downloadable report.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                <Users className="w-4 h-4 text-indigo-600" />
+                <span>Class Range Guidelines</span>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                To protect university portal limits and guarantee quick responses, queries are limited to up to 60 students per search. For larger colleges, query successive series (e.g., 001–060, then 061–120).
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm space-y-1.5">
+              <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Excel &amp; CSV Compatibility</span>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                The exported spreadsheet includes rank, PRN, student name, degree program, GPA/SCPA, letter grade, total marks, and pass/fail status, fully compatible with Microsoft Excel and Google Sheets.
+              </p>
             </div>
           </div>
         </div>

@@ -242,11 +242,8 @@ export async function fetchStudentResult(
     }
   } catch (error: any) {
     console.error(`Error querying MGU for PRN ${cleanPrn} (${degreeLevel}):`, error.message);
-    if (degreeLevel === 'PG' && cleanPrn === '230011018561') {
-      return { ...MOCK_PG_SINGLE_STUDENT, examId: cleanExamId };
-    }
-    if (degreeLevel === 'UG' && cleanPrn === '210021000001') {
-      return { ...MOCK_SINGLE_STUDENT, examId: cleanExamId };
+    if (error.message?.includes('fetch failed') || error.name === 'AbortError') {
+      throw new Error('Unable to connect to Mahatma Gandhi University portal. The university server may be temporarily busy. Please try again shortly.');
     }
     throw error;
   }
@@ -633,10 +630,7 @@ export async function fetchBatchResults(
   }
 
   if (students.length === 0) {
-    // If no real records found (or server timed out), fallback to demo batch with clear flag
-    return degreeLevel === 'PG'
-      ? generateMockPgBatch(startNum, endNum, examId)
-      : generateMockBatch(startNum, endNum, examId);
+    throw new Error(`No student results found for PRN range ${startPrn} to ${endPrn} in the selected examination. Please verify the roll numbers.`);
   }
 
   // Calculate Batch Summary

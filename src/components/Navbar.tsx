@@ -11,8 +11,6 @@ interface NavbarProps {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
   isLive: boolean;
-  demoMode: boolean;
-  setDemoMode: (val: boolean) => void;
   degreeLevel: DegreeLevel;
   setDegreeLevel: (val: DegreeLevel) => void;
 }
@@ -21,8 +19,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   isLive,
-  demoMode,
-  setDemoMode,
   degreeLevel,
   setDegreeLevel,
 }) => {
@@ -108,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>Batch</span>
+              <span>Class Results</span>
             </button>
             <button
               onClick={() => setActiveTab('cgpa')}
@@ -119,7 +115,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Calculator className="w-4 h-4" />
-              <span>CGPA</span>
+              <span>CGPA Calculator</span>
             </button>
             <button
               onClick={() => setActiveTab('compare')}
@@ -134,43 +130,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Server status & Demo Toggle */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Status indicator */}
-            <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border bg-slate-50 border-slate-200">
+          {/* Official Server Status Pill */}
+          <div className="flex items-center">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border bg-emerald-50 border-emerald-200 text-emerald-800 font-semibold shadow-2xs">
               <span className="relative flex h-2 w-2">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    isLive && !demoMode ? 'bg-emerald-400' : 'bg-amber-400'
-                  }`}
-                />
-                <span
-                  className={`relative inline-flex rounded-full h-2 w-2 ${
-                    isLive && !demoMode ? 'bg-emerald-500' : 'bg-amber-500'
-                  }`}
-                />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              <span className="text-slate-600 font-medium">
-                {demoMode ? 'Demo Simulator' : isLive ? 'MGU Server Live' : 'MGU Offline (Mock)'}
-              </span>
+              <span className="hidden sm:inline">MG University Portal Live</span>
+              <span className="sm:hidden">Live</span>
             </div>
-
-            {/* Toggle demo switch */}
-            <button
-              onClick={() => setDemoMode(!demoMode)}
-              title="Toggle between Live MGU Server and Offline Simulator"
-              className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                demoMode
-                  ? 'bg-amber-50 text-amber-900 border-amber-300'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              <Sparkles className={`w-3.5 h-3.5 ${demoMode ? 'text-amber-600' : 'text-slate-400'}`} />
-              <span className="hidden sm:inline">
-                {demoMode ? 'Demo Mode Active' : 'Demo Mode'}
-              </span>
-              <span className="sm:hidden">{demoMode ? 'Demo' : 'Live'}</span>
-            </button>
           </div>
         </div>
 
@@ -192,7 +161,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Users className="w-4 h-4" />
-            <span className="text-[10px]">Batch</span>
+            <span className="text-[10px]">Class</span>
           </button>
           <button
             onClick={() => setActiveTab('cgpa')}

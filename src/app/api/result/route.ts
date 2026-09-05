@@ -4,7 +4,7 @@ import { fetchStudentResult } from '@/lib/mgu-scraper';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { examId, prn, demoMode, degreeLevel } = body;
+    const { examId, prn, degreeLevel } = body;
     const cleanDegree = (degreeLevel === 'PG' ? 'PG' : 'UG') as 'UG' | 'PG';
 
     if (!examId || !prn) {
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await fetchStudentResult(String(examId), cleanPrn, Boolean(demoMode), cleanDegree);
+    const result = await fetchStudentResult(String(examId), cleanPrn, false, cleanDegree);
     return NextResponse.json({
       success: true,
       data: result,

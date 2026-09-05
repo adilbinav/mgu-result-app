@@ -15,7 +15,6 @@ export default function HomePage() {
   const [exams, setExams] = useState<ExamInfo[]>([]);
   const [isLoadingExams, setIsLoadingExams] = useState<boolean>(true);
   const [isLive, setIsLive] = useState<boolean>(true);
-  const [demoMode, setDemoMode] = useState<boolean>(false);
 
   // Batch navigation preset
   const [batchPreset, setBatchPreset] = useState<{ startPrn: string; endPrn: string; examId: string } | null>(null);
@@ -34,13 +33,13 @@ export default function HomePage() {
     setLastCheckedSemesterName(examName);
   };
 
-  // Load active examinations whenever demoMode OR degreeLevel changes
+  // Load active examinations whenever degreeLevel changes
   useEffect(() => {
     let isMounted = true;
     async function loadExams() {
       setIsLoadingExams(true);
       try {
-        const res = await fetch(`/api/exams?demo=${demoMode}&degree=${degreeLevel}`);
+        const res = await fetch(`/api/exams?degree=${degreeLevel}`);
         const data = await res.json();
         if (isMounted && data.success) {
           setExams(data.exams);
@@ -56,7 +55,7 @@ export default function HomePage() {
     return () => {
       isMounted = false;
     };
-  }, [demoMode, degreeLevel]);
+  }, [degreeLevel]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
@@ -65,8 +64,6 @@ export default function HomePage() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         isLive={isLive}
-        demoMode={demoMode}
-        setDemoMode={setDemoMode}
         degreeLevel={degreeLevel}
         setDegreeLevel={setDegreeLevel}
       />
@@ -119,7 +116,6 @@ export default function HomePage() {
           <SingleResultView
             exams={exams}
             isLoadingExams={isLoadingExams}
-            demoMode={demoMode}
             degreeLevel={degreeLevel}
             setDegreeLevel={setDegreeLevel}
             onNavigateToBatch={handleNavigateToBatch}
@@ -130,7 +126,6 @@ export default function HomePage() {
           <BatchResultView
             exams={exams}
             isLoadingExams={isLoadingExams}
-            demoMode={demoMode}
             degreeLevel={degreeLevel}
             setDegreeLevel={setDegreeLevel}
             initialStartPrn={batchPreset?.startPrn}
@@ -148,7 +143,6 @@ export default function HomePage() {
           <StudentCompareView
             exams={exams}
             isLoadingExams={isLoadingExams}
-            demoMode={demoMode}
           />
         )}
       </main>

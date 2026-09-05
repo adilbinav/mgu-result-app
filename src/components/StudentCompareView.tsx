@@ -16,7 +16,6 @@ import { ExamInfo, StudentResult } from '@/lib/types';
 interface StudentCompareViewProps {
   exams: ExamInfo[];
   isLoadingExams: boolean;
-  demoMode: boolean;
   defaultPrn?: string;
   defaultExamId?: string;
 }
@@ -24,13 +23,12 @@ interface StudentCompareViewProps {
 export const StudentCompareView: React.FC<StudentCompareViewProps> = ({
   exams,
   isLoadingExams,
-  demoMode,
-  defaultPrn = '210021000001',
-  defaultExamId = '114',
+  defaultPrn = '',
+  defaultExamId = '',
 }) => {
   const [selectedExamId, setSelectedExamId] = useState<string>(defaultExamId || (exams[0]?.id || ''));
-  const [prn1, setPrn1] = useState<string>(defaultPrn || '210021000001');
-  const [prn2, setPrn2] = useState<string>('210021000002');
+  const [prn1, setPrn1] = useState<string>(defaultPrn || '');
+  const [prn2, setPrn2] = useState<string>('');
 
   const [loading, setLoading] = useState<boolean>(false);
   const [student1, setStudent1] = useState<StudentResult | null>(null);
@@ -41,7 +39,7 @@ export const StudentCompareView: React.FC<StudentCompareViewProps> = ({
     const res = await fetch('/api/result', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ examId, prn, demoMode }),
+      body: JSON.stringify({ examId, prn }),
     });
     const json = await res.json();
     if (!res.ok || !json.success) {
@@ -79,13 +77,6 @@ export const StudentCompareView: React.FC<StudentCompareViewProps> = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSample = () => {
-    setPrn1('210021000001');
-    setPrn2('210021000002');
-    setSelectedExamId('114');
-    handleCompare(undefined, '210021000001', '210021000002');
   };
 
   // Compute common courses
@@ -127,15 +118,6 @@ export const StudentCompareView: React.FC<StudentCompareViewProps> = ({
               Compare academic marks, SCPA, external ESA, and course scores between two classmates.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={handleSample}
-            className="self-start sm:self-auto flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Sample Classmates (01 vs 02)</span>
-          </button>
         </div>
 
         <form onSubmit={handleCompare} className="mt-6 space-y-4">
