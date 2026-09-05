@@ -4,7 +4,8 @@ import { fetchBatchResults } from '@/lib/mgu-scraper';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { examId, startPrn, endPrn, demoMode } = body;
+    const { examId, startPrn, endPrn, demoMode, degreeLevel } = body;
+    const cleanDegree = (degreeLevel === 'PG' ? 'PG' : 'UG') as 'UG' | 'PG';
 
     if (!examId || !startPrn || !endPrn) {
       return NextResponse.json(
@@ -41,7 +42,8 @@ export async function POST(request: Request) {
       String(examId),
       String(startPrn).trim(),
       String(endPrn).trim(),
-      Boolean(demoMode)
+      Boolean(demoMode),
+      cleanDegree
     );
 
     return NextResponse.json({

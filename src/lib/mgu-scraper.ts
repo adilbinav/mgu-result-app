@@ -1,13 +1,26 @@
 import * as cheerio from 'cheerio';
-import { ExamInfo, StudentResult, CourseResult, SemesterSummary, BatchResultResponse } from './types';
-import { MOCK_EXAMS, MOCK_SINGLE_STUDENT, generateMockBatch } from './mock-data';
+import { ExamInfo, StudentResult, CourseResult, SemesterSummary, BatchResultResponse, DegreeLevel } from './types';
+import { 
+  MOCK_EXAMS, 
+  MOCK_PG_EXAMS, 
+  MOCK_SINGLE_STUDENT, 
+  MOCK_PG_SINGLE_STUDENT, 
+  generateMockBatch, 
+  generateMockPgBatch 
+} from './mock-data';
 
 // Bypass SSL verification for MGU's internal server certificate
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const MGU_RESULT_URL = 'https://dsdc.mgu.ac.in/exQpMgmt/index.php/public/ResultView_ctrl/';
+const MGU_UG_RESULT_URL = 'https://dsdc.mgu.ac.in/exQpMgmt/index.php/public/ResultView_ctrl/';
+const MGU_PG_RESULT_URL = 'https://dsdc.mgu.ac.in/exQpMgmt/index.php/public/PGResultView_ctrl/';
 
-function computeApplicableAdmissionYears(name: string, semName: string, examYear?: string): number[] {
+function computeApplicableAdmissionYears(
+  name: string, 
+  semName: string, 
+  examYear?: string, 
+  degreeLevel: DegreeLevel = 'UG'
+): number[] {
   const upper = name.toUpperCase();
   const years = new Set<number>();
 
@@ -41,7 +54,7 @@ function computeApplicableAdmissionYears(name: string, semName: string, examYear
       years.add(regAdm);
 
       // Supplementary / improvement eligibility
-      if (upper.includes('SUPPLEMENTARY') || upper.includes('CBCS') || upper.includes('B.VOC') || upper.includes('B VOC')) {
+      if (upper.includes('SUPPLEMENTARY') || upper.includes('CBCS') || upper.includes('PGCSS') || upper.includes('B.VOC') || upper.includes('B VOC')) {
         years.add(regAdm - 1);
         years.add(regAdm - 2);
       }
@@ -51,26 +64,43 @@ function computeApplicableAdmissionYears(name: string, semName: string, examYear
   return Array.from(years).sort((a, b) => b - a);
 }
 
-// Simple cache for exam list
-let cachedExams: ExamInfo[] | null = null;
-let lastExamFetchTime = 0;
+// Caches for exam lists
+let cachedUgExams: ExamInfo[] | null = null;
+let lastUgExamFetchTime = 0;
+let cachedPgExams: ExamInfo[] | null = null;
+let lastPgExamFetchTime = 0;
 const EXAM_CACHE_TTL = 15 * 60 * 1000; // 15 mins
 
-export async function fetchExamList(forceDemo: boolean = false): Promise<{ exams: ExamInfo[]; isLive: boolean }> {
+export async function fetchExamList(
+  forceDemo: boolean = false,
+  degreeLevel: DegreeLevel = 'UG'
+): Promise<{ exams: ExamInfo[]; isLive: boolean }> {
   if (forceDemo) {
-    return { exams: MOCK_EXAMS, isLive: false };
+    return { 
+      exams: degreeLevel === 'PG' ? MOCK_PG_EXAMS : MOCK_EXAMS, 
+      isLive: false 
+    };
   }
 
   const now = Date.now();
-  if (cachedExams && (now - lastExamFetchTime) < EXAM_CACHE_TTL) {
-    return { exams: cachedExams, isLive: true };
+  if (degreeLevel === 'PG') {
+    if (cachedPgExams && (now - lastPgExamFetchTime) < EXAM_CACHE_TTL) {
+      return { exams: cachedPgExams, isLive: true };
+    }
+  } else {
+    if (cachedUgExams && (now - lastUgExamFetchTime) < EXAM_CACHE_TTL) {
+      return { exams: cachedUgExams, isLive: true };
+    }
   }
+
+  const targetUrl = degreeLevel === 'PG' ? MGU_PG_RESULT_URL : MGU_UG_RESULT_URL;
+  const fallbackExams = degreeLevel === 'PG' ? MOCK_PG_EXAMS : MOCK_EXAMS;
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-    const response = await fetch(MGU_RESULT_URL, {
+    const response = await fetch(targetUrl, {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -87,7 +117,7 @@ export async function fetchExamList(forceDemo: boolean = false): Promise<{ exams
 
     const html = await response.text();
     const $ = cheerio.load(html);
-    const options = $('#exam_id option');
+    const options = $('select[name="exam_id"] option, #exam_id option');
 
     const exams: ExamInfo[] = [];
 
@@ -111,11 +141,12 @@ export async function fetchExamList(forceDemo: boolean = false): Promise<{ exams
         const year = yearMatch ? yearMatch[1] : undefined;
 
         // Programme category
-        let prog = 'CBCS';
+        let prog = degreeLevel === 'PG' ? 'PGCSS' : 'CBCS';
         if (upper.includes('B VOC') || upper.includes('B.VOC')) prog = 'B.Voc';
+        else if (upper.includes('M VOC') || upper.includes('M.VOC')) prog = 'M.Voc';
         else if (upper.includes('SUPPLEMENTARY')) prog = 'Supplementary';
 
-        const applicableAdmissionYears = computeApplicableAdmissionYears(text, sem, year);
+        const applicableAdmissionYears = computeApplicableAdmissionYears(text, sem, year, degreeLevel);
 
         exams.push({
           id: val,
@@ -124,40 +155,57 @@ export async function fetchExamList(forceDemo: boolean = false): Promise<{ exams
           year,
           programmeCategory: prog,
           applicableAdmissionYears,
+          degreeLevel,
         });
       }
     });
 
     if (exams.length > 0) {
-      cachedExams = exams;
-      lastExamFetchTime = now;
+      if (degreeLevel === 'PG') {
+        cachedPgExams = exams;
+        lastPgExamFetchTime = now;
+      } else {
+        cachedUgExams = exams;
+        lastUgExamFetchTime = now;
+      }
       return { exams, isLive: true };
     } else {
-      return { exams: MOCK_EXAMS, isLive: false };
+      return { exams: fallbackExams, isLive: false };
     }
   } catch (error) {
-    console.warn('Failed to fetch live exam list from MGU, using fallback:', error);
-    return { exams: MOCK_EXAMS, isLive: false };
+    console.warn(`Failed to fetch live ${degreeLevel} exam list from MGU, using fallback:`, error);
+    return { exams: fallbackExams, isLive: false };
   }
 }
 
 export async function fetchStudentResult(
   examId: string,
   prn: string,
-  forceDemo: boolean = false
+  forceDemo: boolean = false,
+  degreeLevel: DegreeLevel = 'UG'
 ): Promise<StudentResult> {
   const cleanPrn = prn.trim();
   const cleanExamId = examId.trim();
 
   if (forceDemo) {
-    // If testing demo PRN or forced demo
-    if (cleanPrn === '210021000001') {
-      return { ...MOCK_SINGLE_STUDENT, examId: cleanExamId };
+    if (degreeLevel === 'PG') {
+      if (cleanPrn === '230011018561') {
+        return { ...MOCK_PG_SINGLE_STUDENT, examId: cleanExamId };
+      }
+      const num = parseInt(cleanPrn, 10) || 230011018561;
+      const batch = generateMockPgBatch(num, num, cleanExamId);
+      return batch.students[0];
+    } else {
+      if (cleanPrn === '210021000001') {
+        return { ...MOCK_SINGLE_STUDENT, examId: cleanExamId };
+      }
+      const num = parseInt(cleanPrn, 10) || 210021000001;
+      const batch = generateMockBatch(num, num, cleanExamId);
+      return batch.students[0];
     }
-    const num = parseInt(cleanPrn, 10) || 210021000001;
-    const batch = generateMockBatch(num, num, cleanExamId);
-    return batch.students[0];
   }
+
+  const targetUrl = degreeLevel === 'PG' ? MGU_PG_RESULT_URL : MGU_UG_RESULT_URL;
 
   try {
     const controller = new AbortController();
@@ -169,12 +217,12 @@ export async function fetchStudentResult(
       btnresult: 'Get Result',
     });
 
-    const response = await fetch(MGU_RESULT_URL, {
+    const response = await fetch(targetUrl, {
       method: 'POST',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Referer': MGU_RESULT_URL,
+        'Referer': targetUrl,
       },
       body: body.toString(),
       signal: controller.signal,
@@ -187,11 +235,17 @@ export async function fetchStudentResult(
     }
 
     const html = await response.text();
-    return parseResultHtml(html, cleanExamId, cleanPrn);
+    if (degreeLevel === 'PG') {
+      return parsePgResultHtml(html, cleanExamId, cleanPrn);
+    } else {
+      return parseResultHtml(html, cleanExamId, cleanPrn);
+    }
   } catch (error: any) {
-    console.error(`Error querying MGU for PRN ${cleanPrn}:`, error.message);
-    // If PRN equals our known sample PRN and live fails, fallback cleanly to mock
-    if (cleanPrn === '210021000001') {
+    console.error(`Error querying MGU for PRN ${cleanPrn} (${degreeLevel}):`, error.message);
+    if (degreeLevel === 'PG' && cleanPrn === '230011018561') {
+      return { ...MOCK_PG_SINGLE_STUDENT, examId: cleanExamId };
+    }
+    if (degreeLevel === 'UG' && cleanPrn === '210021000001') {
       return { ...MOCK_SINGLE_STUDENT, examId: cleanExamId };
     }
     throw error;
@@ -361,7 +415,166 @@ function parseResultHtml(html: string, examId: string, queryPrn: string): Studen
     courses,
     summary,
     isDemo: false,
+    degreeLevel: 'UG',
     rawHtml: rawFieldset ? `<fieldset class="frame">${rawFieldset}</fieldset>` : undefined,
+  };
+}
+
+function parsePgResultHtml(html: string, examId: string, queryPrn: string): StudentResult {
+  const $ = cheerio.load(html);
+
+  const fullText = $('body').text();
+  if (!fullText.includes('Program') && !fullText.includes('PRN') && !fullText.includes('Course Code')) {
+    throw new Error(`No result found for PRN ${queryPrn} in the selected PG examination.`);
+  }
+
+  // 1. Extract Student Info
+  let prn = queryPrn;
+  let name = '';
+  let programme = '';
+  let examCentre = '';
+
+  $('table').each((_, table) => {
+    const text = $(table).text();
+    if (text.includes('PRN') && text.includes('Name') && text.includes('Program')) {
+      $(table).find('tr').each((__, tr) => {
+        const tds = $(tr).find('td');
+        if (tds.length >= 3) {
+          const label = $(tds[0]).text().trim().toUpperCase();
+          const val = $(tds[2]).text().trim();
+          if (label === 'PRN') prn = val || prn;
+          else if (label === 'NAME') name = val;
+          else if (label === 'PROGRAM') programme = val;
+          else if (label === 'EXAM CENTRE') examCentre = val;
+        }
+      });
+    }
+  });
+
+  if (!name) {
+    throw new Error(`Student record not found for PRN ${queryPrn}`);
+  }
+
+  // 2. Extract Course Rows and Semester Result
+  const courses: CourseResult[] = [];
+  let summary: SemesterSummary | null = null;
+
+  $('tr').each((__, tr) => {
+    const tds = $(tr).find('td.bord_rslt');
+    if (tds.length === 9) {
+      const cells = tds.map((___, c) => $(c).text().trim()).get();
+      const rowText = $(tr).text();
+
+      // Check if Semester Result row
+      if (rowText.includes('Semester Result')) {
+        const gpaMatch = cells[6]?.match(/\d+(\.\d+)?/);
+        const gpa = gpaMatch ? parseFloat(gpaMatch[0]) : 0;
+        const grade = cells[7] || '';
+        const result = cells[8] || 'Passed';
+
+        summary = {
+          totalCredits: 0, // will calculate from courses
+          scpa: gpa,
+          gpa,
+          scale: '5-point',
+          totalMarks: 0,
+          maxMarks: 0,
+          percentage: Number(((gpa / 5.0) * 100).toFixed(1)),
+          grade,
+          creditPoints: 0,
+          result
+        };
+        return;
+      }
+
+      // Check if header row (contains "Course Code" or "INT")
+      if (cells[0] === 'Course Code' || cells[0] === '' || cells[1] === 'Course') {
+        return;
+      }
+
+      // Standard course row
+      const code = cells[0];
+      const title = cells[1];
+      const theoryInt = cells[2];
+      const theoryExt = cells[3];
+      const practicalInt = cells[4];
+      const practicalExt = cells[5];
+      const gpaMatch = cells[6]?.match(/\d+(\.\d+)?/);
+      const courseGpa = gpaMatch ? parseFloat(gpaMatch[0]) : 0;
+      const grade = cells[7] || '';
+      const result = cells[8] || (grade === 'F' ? 'Failed' : 'Passed');
+
+      const credit = 4; // Standard PG course credits
+
+      // Equivalent fields for backward compatibility
+      const esaMarks = theoryExt !== '---' && theoryExt !== '' ? theoryExt : (practicalExt !== '---' ? practicalExt : '0');
+      const isaMarks = theoryInt !== '---' && theoryInt !== '' ? theoryInt : (practicalInt !== '---' ? practicalInt : '0');
+
+      courses.push({
+        code,
+        title,
+        credit,
+        esaMarks,
+        esaMax: '5.00',
+        isaMarks,
+        isaMax: '5.00',
+        totalMarks: Math.round(courseGpa * 20),
+        maxMarks: 100,
+        grade,
+        gradePoint: courseGpa,
+        creditPoint: Number((courseGpa * credit).toFixed(2)),
+        result,
+        theoryInt,
+        theoryExt,
+        practicalInt,
+        practicalExt,
+        gpa: courseGpa
+      });
+    }
+  });
+
+  const totCredits = courses.length * 4;
+  const totCP = courses.reduce((acc, c) => acc + c.creditPoint, 0);
+  const avgGpa = totCredits > 0 ? Number((totCP / totCredits).toFixed(2)) : 0;
+
+  let finalSummary: SemesterSummary;
+  const parsedSummary = summary as SemesterSummary | null;
+  if (parsedSummary) {
+    finalSummary = {
+      ...parsedSummary,
+      totalCredits: totCredits,
+      creditPoints: totCP,
+      totalMarks: Math.round(parsedSummary.scpa * 20 * courses.length),
+      maxMarks: courses.length * 100,
+    };
+  } else {
+    finalSummary = {
+      totalCredits: totCredits,
+      scpa: avgGpa,
+      gpa: avgGpa,
+      scale: '5-point',
+      totalMarks: Math.round(avgGpa * 20 * courses.length),
+      maxMarks: courses.length * 100,
+      percentage: Number(((avgGpa / 5.0) * 100).toFixed(1)),
+      grade: avgGpa >= 4.5 ? 'A+' : avgGpa >= 4.0 ? 'A' : avgGpa >= 3.5 ? 'B' : avgGpa >= 3.0 ? 'C' : 'F',
+      creditPoints: totCP,
+      result: courses.some(c => c.result.toLowerCase() === 'failed') ? 'Failed' : 'Passed'
+    };
+  }
+
+  const rawFieldset = $('fieldset.frame').html();
+
+  return {
+    prn,
+    name,
+    programme,
+    examCentre,
+    examId,
+    courses,
+    summary: finalSummary,
+    isDemo: false,
+    degreeLevel: 'PG',
+    rawHtml: rawFieldset ? `<fieldset class="frame">${rawFieldset}</fieldset>` : undefined
   };
 }
 
@@ -369,7 +582,8 @@ export async function fetchBatchResults(
   examId: string,
   startPrn: string,
   endPrn: string,
-  forceDemo: boolean = false
+  forceDemo: boolean = false,
+  degreeLevel: DegreeLevel = 'UG'
 ): Promise<BatchResultResponse> {
   const startNum = parseInt(startPrn, 10);
   const endNum = parseInt(endPrn, 10);
@@ -388,7 +602,9 @@ export async function fetchBatchResults(
   }
 
   if (forceDemo) {
-    return generateMockBatch(startNum, endNum, examId);
+    return degreeLevel === 'PG' 
+      ? generateMockPgBatch(startNum, endNum, examId)
+      : generateMockBatch(startNum, endNum, examId);
   }
 
   // Generate list of PRNs
@@ -404,7 +620,7 @@ export async function fetchBatchResults(
   for (let i = 0; i < prnList.length; i += concurrency) {
     const chunk = prnList.slice(i, i + concurrency);
     const promises = chunk.map(prn =>
-      fetchStudentResult(examId, prn, false).catch(err => {
+      fetchStudentResult(examId, prn, false, degreeLevel).catch(err => {
         console.log(`PRN ${prn} not found or skipped: ${err.message}`);
         return null;
       })
@@ -418,18 +634,20 @@ export async function fetchBatchResults(
 
   if (students.length === 0) {
     // If no real records found (or server timed out), fallback to demo batch with clear flag
-    return generateMockBatch(startNum, endNum, examId);
+    return degreeLevel === 'PG'
+      ? generateMockPgBatch(startNum, endNum, examId)
+      : generateMockBatch(startNum, endNum, examId);
   }
 
   // Calculate Batch Summary
   let passedCount = 0;
   let totalScpa = 0;
   let highestScpa = 0;
-  let lowestScpa = 10;
+  let lowestScpa = degreeLevel === 'PG' ? 5.0 : 10.0;
   let topper: StudentResult | null = null;
-  const gradeDistribution: Record<string, number> = {
-    'A+': 0, 'A': 0, 'B+': 0, 'B': 0, 'C': 0, 'F': 0
-  };
+  const gradeDistribution: Record<string, number> = degreeLevel === 'PG'
+    ? { 'A+': 0, 'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0, 'F': 0 }
+    : { 'A+': 0, 'A': 0, 'B+': 0, 'B': 0, 'C': 0, 'F': 0 };
 
   for (const s of students) {
     if (s.summary.result.toLowerCase() === 'passed') passedCount++;
@@ -452,6 +670,7 @@ export async function fetchBatchResults(
 
   return {
     isDemo: false,
+    degreeLevel,
     summary: {
       totalRequested: prnList.length,
       totalFound: students.length,
@@ -467,7 +686,8 @@ export async function fetchBatchResults(
         scpa: topperStudent.summary.scpa,
         totalMarks: topperStudent.summary.totalMarks
       } : undefined,
-      gradeDistribution
+      gradeDistribution,
+      degreeLevel
     },
     students
   };

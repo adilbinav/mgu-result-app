@@ -5,11 +5,14 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const demo = searchParams.get('demo') === 'true';
+    const degreeParam = searchParams.get('degree')?.toUpperCase();
+    const degreeLevel = degreeParam === 'PG' ? 'PG' : 'UG';
 
-    const { exams, isLive } = await fetchExamList(demo);
+    const { exams, isLive } = await fetchExamList(demo, degreeLevel);
     return NextResponse.json({
       success: true,
       isLive,
+      degreeLevel,
       count: exams.length,
       exams,
     });

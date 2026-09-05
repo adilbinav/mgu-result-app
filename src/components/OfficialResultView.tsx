@@ -10,6 +10,7 @@ interface OfficialResultViewProps {
 
 export const OfficialResultView: React.FC<OfficialResultViewProps> = ({ result }) => {
   const { prn, name, programme, examCentre, courses, summary } = result;
+  const isPg = result.degreeLevel === 'PG';
   const [mobileViewType, setMobileViewType] = useState<'cards' | 'table'>('cards');
 
   const handlePrint = () => {
@@ -64,7 +65,7 @@ export const OfficialResultView: React.FC<OfficialResultViewProps> = ({ result }
               className="text-base sm:text-xl font-bold tracking-tight text-[#004F91] leading-tight"
               style={{ textShadow: '1px 1px 0px #bcd6f3' }}
             >
-              Mahatma Gandhi University CBCSS Exam Results
+              Mahatma Gandhi University {isPg ? 'PG CSS' : 'CBCSS'} Exam Results
             </h2>
             <p className="text-[11px] sm:text-sm font-semibold text-[#313131]">
               (Revised Scheme)
@@ -122,7 +123,7 @@ export const OfficialResultView: React.FC<OfficialResultViewProps> = ({ result }
                   <span className="font-bold text-sm" style={{ color: '#993366' }}>{name}</span>
                 </div>
                 <div className="border-b border-slate-200/60 pb-1">
-                  <span className="font-bold text-slate-600 block">Programme:</span>
+                  <span className="font-bold text-slate-600 block">{isPg ? 'Program:' : 'Programme:'}</span>
                   <span className="text-slate-900 font-medium">{programme}</span>
                 </div>
                 <div>
@@ -136,19 +137,25 @@ export const OfficialResultView: React.FC<OfficialResultViewProps> = ({ result }
                 <table className="w-full text-xs sm:text-sm text-left border-collapse">
                   <tbody>
                     <tr>
-                      <td className="py-1 font-bold text-slate-800 w-48">Permanent Register Number</td>
+                      <td className="py-1 font-bold text-slate-800 w-48">
+                        {isPg ? 'PRN' : 'Permanent Register Number'}
+                      </td>
                       <td className="py-1 px-2 font-bold text-center w-6">:</td>
                       <td className="py-1 font-semibold text-slate-900 text-sm">{prn}</td>
                     </tr>
                     <tr>
-                      <td className="py-1 font-bold text-slate-800">Name of Student</td>
+                      <td className="py-1 font-bold text-slate-800">
+                        {isPg ? 'Name' : 'Name of Student'}
+                      </td>
                       <td className="py-1 px-2 font-bold text-center">:</td>
                       <td className="py-1 font-bold text-base" style={{ color: '#993366' }}>
                         {name}
                       </td>
                     </tr>
                     <tr>
-                      <td className="py-1 font-bold text-slate-800">Programme</td>
+                      <td className="py-1 font-bold text-slate-800">
+                        {isPg ? 'Program' : 'Programme'}
+                      </td>
                       <td className="py-1 px-2 font-bold text-center">:</td>
                       <td className="py-1 text-slate-900">{programme}</td>
                     </tr>
@@ -194,25 +201,42 @@ export const OfficialResultView: React.FC<OfficialResultViewProps> = ({ result }
                       </div>
                     </div>
 
-                    {/* Mark Details Grid */}
-                    <div className="grid grid-cols-4 gap-1.5 text-center text-[11px] bg-slate-50 p-2 rounded">
-                      <div>
-                        <div className="font-bold text-slate-500 text-[10px]">ESA</div>
-                        <div className="font-semibold">{c.esaMarks}/{c.esaMax}</div>
+                    {/* Mark Details Grid (PG vs UG) */}
+                    {isPg ? (
+                      <div className="grid grid-cols-3 gap-1.5 text-center text-[11px] bg-slate-50 p-2 rounded">
+                        <div>
+                          <div className="font-bold text-slate-500 text-[10px]">Theory (INT/EXT)</div>
+                          <div className="font-semibold">{c.theoryInt || '---'} / {c.theoryExt || '---'}</div>
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-500 text-[10px]">Practical (INT/EXT)</div>
+                          <div className="font-semibold">{c.practicalInt || '---'} / {c.practicalExt || '---'}</div>
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-500 text-[10px]">Course GPA</div>
+                          <div className="font-bold text-blue-700">{c.gpa !== undefined ? c.gpa.toFixed(2) : '---'}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-500 text-[10px]">ISA</div>
-                        <div className="font-semibold">{c.isaMarks}/{c.isaMax}</div>
+                    ) : (
+                      <div className="grid grid-cols-4 gap-1.5 text-center text-[11px] bg-slate-50 p-2 rounded">
+                        <div>
+                          <div className="font-bold text-slate-500 text-[10px]">ESA</div>
+                          <div className="font-semibold">{c.esaMarks}/{c.esaMax}</div>
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-500 text-[10px]">ISA</div>
+                          <div className="font-semibold">{c.isaMarks}/{c.isaMax}</div>
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-500 text-[10px]">Total</div>
+                          <div className="font-bold text-slate-900">{c.totalMarks}/{c.maxMarks}</div>
+                        </div>
+                        <div>
+                          <div className="font-bold text-slate-500 text-[10px]">Credits (CP)</div>
+                          <div className="font-semibold">{c.credit} ({c.creditPoint})</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-500 text-[10px]">Total</div>
-                        <div className="font-bold text-slate-900">{c.totalMarks}/{c.maxMarks}</div>
-                      </div>
-                      <div>
-                        <div className="font-bold text-slate-500 text-[10px]">Credits (CP)</div>
-                        <div className="font-semibold">{c.credit} ({c.creditPoint})</div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
 
@@ -222,16 +246,20 @@ export const OfficialResultView: React.FC<OfficialResultViewProps> = ({ result }
                   style={{ border: '1.5px solid #333333' }}
                 >
                   <div className="font-bold uppercase tracking-wider text-slate-700 text-[11px]">
-                    SEMESTER RESULT
+                    {isPg ? 'SEMESTER RESULT' : 'SEMESTER RESULT'}
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <div className="text-[10px] text-slate-500 font-bold">SCPA / Grade</div>
-                      <div className="font-extrabold text-sm text-[#004F91]">{summary.scpa.toFixed(2)} ({summary.grade})</div>
+                      <div className="text-[10px] text-slate-500 font-bold">{isPg ? 'GPA / Grade' : 'SCPA / Grade'}</div>
+                      <div className="font-extrabold text-sm text-[#004F91]">
+                        {summary.scpa.toFixed(2)} ({summary.grade})
+                      </div>
                     </div>
                     <div>
-                      <div className="text-[10px] text-slate-500 font-bold">Total Marks</div>
-                      <div className="font-extrabold text-sm">{summary.totalMarks}/{summary.maxMarks}</div>
+                      <div className="text-[10px] text-slate-500 font-bold">{isPg ? 'Scale' : 'Total Marks'}</div>
+                      <div className="font-extrabold text-sm">
+                        {isPg ? '5.00 Point' : `${summary.totalMarks}/${summary.maxMarks}`}
+                      </div>
                     </div>
                     <div>
                       <div className="text-[10px] text-slate-500 font-bold">Status</div>
@@ -252,95 +280,166 @@ export const OfficialResultView: React.FC<OfficialResultViewProps> = ({ result }
                   <ArrowRightLeft className="w-3 h-3" />
                   Swipe table horizontally
                 </span>
-                <span className="font-bold text-[10px]">13 Columns</span>
+                <span className="font-bold text-[10px]">{isPg ? '9 Columns' : '13 Columns'}</span>
               </div>
 
               <div className="overflow-x-auto -mx-1 sm:mx-0">
-                <table 
-                  className="w-full text-xs text-left border-collapse min-w-[700px] sm:min-w-full"
-                  style={{
-                    border: '1px solid #333333',
-                    backgroundColor: '#FFFFFF',
-                  }}
-                >
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-900 font-bold">
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Course Code</th>
-                      <th className="border border-[#333333] p-1.5" rowSpan={2}>Course</th>
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Credit</th>
-                      <th className="border border-[#333333] p-1 text-center" colSpan={2}>EXTERNAL</th>
-                      <th className="border border-[#333333] p-1 text-center" colSpan={2}>INTERNAL</th>
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Total</th>
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>MAX</th>
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Grade</th>
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>GP</th>
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>CP</th>
-                      <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Result</th>
-                    </tr>
-                    <tr className="bg-slate-50 text-[10px] text-slate-800 font-bold">
-                      <th className="border border-[#333333] p-1 text-center">ESA</th>
-                      <th className="border border-[#333333] p-1 text-center">MAX</th>
-                      <th className="border border-[#333333] p-1 text-center">ISA</th>
-                      <th className="border border-[#333333] p-1 text-center">MAX</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {courses.map((c, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50">
-                        <td className="border border-[#333333] p-1.5 text-center font-mono">{c.code}</td>
-                        <td className="border border-[#333333] p-1.5 text-left font-medium">{c.title}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.credit}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.esaMarks}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.esaMax}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.isaMarks}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.isaMax}</td>
-                        <td className="border border-[#333333] p-1.5 text-center font-semibold">{c.totalMarks}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.maxMarks}</td>
-                        <td className="border border-[#333333] p-1.5 text-center font-bold">{c.grade}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.gradePoint}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">{c.creditPoint}</td>
-                        <td className="border border-[#333333] p-1.5 text-center">
-                          <strong style={{ fontSize: '11px' }}>
-                            <span style={{ color: c.result.toLowerCase() === 'passed' ? 'green' : 'red' }}>
-                              {c.result}
-                            </span>
+                {isPg ? (
+                  /* Authentic MGU PG CSS Table (9 columns) */
+                  <table 
+                    className="w-full text-xs text-left border-collapse min-w-[700px] sm:min-w-full"
+                    style={{
+                      border: '1px solid #333333',
+                      backgroundColor: '#FFFFFF',
+                    }}
+                  >
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-900 font-bold">
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2} style={{ width: '90px' }}>Course Code</th>
+                        <th className="border border-[#333333] p-1.5" rowSpan={2}>Course</th>
+                        <th className="border border-[#333333] p-1 text-center" colSpan={2} style={{ width: '120px' }}>Theory</th>
+                        <th className="border border-[#333333] p-1 text-center" colSpan={2} style={{ width: '120px' }}>Practical</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2} style={{ width: '60px' }}>GPA</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2} style={{ width: '60px' }}>Grade</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2} style={{ width: '70px' }}>Result</th>
+                      </tr>
+                      <tr className="bg-slate-50 text-[10px] text-slate-800 font-bold">
+                        <th className="border border-[#333333] p-1 text-center" style={{ width: '60px' }}>INT</th>
+                        <th className="border border-[#333333] p-1 text-center" style={{ width: '60px' }}>EXT</th>
+                        <th className="border border-[#333333] p-1 text-center" style={{ width: '60px' }}>INT</th>
+                        <th className="border border-[#333333] p-1 text-center" style={{ width: '60px' }}>EXT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {courses.map((c, i) => (
+                        <tr key={i} className="hover:bg-slate-50/50">
+                          <td className="border border-[#333333] p-1.5 text-center font-mono">{c.code}</td>
+                          <td className="border border-[#333333] p-1.5 text-left font-medium">{c.title}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.theoryInt || '---'}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.theoryExt || '---'}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.practicalInt || '---'}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.practicalExt || '---'}</td>
+                          <td className="border border-[#333333] p-1.5 text-center font-bold">{c.gpa !== undefined ? c.gpa.toFixed(2) : '---'}</td>
+                          <td className="border border-[#333333] p-1.5 text-center font-bold">{c.grade}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">
+                            <strong style={{ fontSize: '11px' }}>
+                              <span style={{ color: c.result.toLowerCase() === 'passed' ? 'green' : 'red' }}>
+                                {c.result}
+                              </span>
+                            </strong>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {/* Official PG Semester Result row */}
+                      <tr className="bg-slate-50 font-bold">
+                        <td className="border border-[#333333] p-2 text-center">&nbsp;</td>
+                        <td className="border border-[#333333] p-2 text-left">
+                          <strong>Semester Result</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center" colSpan={4}></td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong>{summary.scpa.toFixed(2)}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong>{summary.grade}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong style={{ color: summary.result.toLowerCase() === 'passed' ? '#339900' : '#cc0000' }}>
+                            {summary.result}
                           </strong>
                         </td>
                       </tr>
-                    ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  /* Authentic MGU UG CBCSS Table (13 columns) */
+                  <table 
+                    className="w-full text-xs text-left border-collapse min-w-[700px] sm:min-w-full"
+                    style={{
+                      border: '1px solid #333333',
+                      backgroundColor: '#FFFFFF',
+                    }}
+                  >
+                    <thead>
+                      <tr className="bg-slate-50 text-slate-900 font-bold">
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Course Code</th>
+                        <th className="border border-[#333333] p-1.5" rowSpan={2}>Course</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Credit</th>
+                        <th className="border border-[#333333] p-1 text-center" colSpan={2}>EXTERNAL</th>
+                        <th className="border border-[#333333] p-1 text-center" colSpan={2}>INTERNAL</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Total</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>MAX</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Grade</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>GP</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>CP</th>
+                        <th className="border border-[#333333] p-1.5 text-center" rowSpan={2}>Result</th>
+                      </tr>
+                      <tr className="bg-slate-50 text-[10px] text-slate-800 font-bold">
+                        <th className="border border-[#333333] p-1 text-center">ESA</th>
+                        <th className="border border-[#333333] p-1 text-center">MAX</th>
+                        <th className="border border-[#333333] p-1 text-center">ISA</th>
+                        <th className="border border-[#333333] p-1 text-center">MAX</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {courses.map((c, i) => (
+                        <tr key={i} className="hover:bg-slate-50/50">
+                          <td className="border border-[#333333] p-1.5 text-center font-mono">{c.code}</td>
+                          <td className="border border-[#333333] p-1.5 text-left font-medium">{c.title}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.credit}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.esaMarks}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.esaMax}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.isaMarks}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.isaMax}</td>
+                          <td className="border border-[#333333] p-1.5 text-center font-semibold">{c.totalMarks}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.maxMarks}</td>
+                          <td className="border border-[#333333] p-1.5 text-center font-bold">{c.grade}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.gradePoint}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">{c.creditPoint}</td>
+                          <td className="border border-[#333333] p-1.5 text-center">
+                            <strong style={{ fontSize: '11px' }}>
+                              <span style={{ color: c.result.toLowerCase() === 'passed' ? 'green' : 'red' }}>
+                                {c.result}
+                              </span>
+                            </strong>
+                          </td>
+                        </tr>
+                      ))}
 
-                    {/* Official SEMESTER RESULT row */}
-                    <tr className="bg-slate-50 font-bold">
-                      <td className="border border-[#333333] p-2 text-center" colSpan={2}>
-                        <strong>SEMESTER RESULT</strong>
-                      </td>
-                      <td className="border border-[#333333] p-2 text-center">
-                        <strong>{summary.totalCredits}</strong>
-                      </td>
-                      <td className="border border-[#333333] p-2 text-center" colSpan={4}>
-                        <strong>SCPA:&nbsp;&nbsp;{summary.scpa.toFixed(2)}</strong>
-                      </td>
-                      <td className="border border-[#333333] p-2 text-center">
-                        <strong>{summary.totalMarks}</strong>
-                      </td>
-                      <td className="border border-[#333333] p-2 text-center">
-                        <strong>{summary.maxMarks}</strong>
-                      </td>
-                      <td className="border border-[#333333] p-2 text-center">
-                        <strong>{summary.grade}</strong>
-                      </td>
-                      <td className="border border-[#333333] p-2 text-center"></td>
-                      <td className="border border-[#333333] p-2 text-center">
-                        <strong>{summary.creditPoints}</strong>
-                      </td>
-                      <td className="border border-[#333333] p-2 text-center">
-                        <strong style={{ color: summary.result.toLowerCase() === 'passed' ? '#339900' : '#cc0000' }}>
-                          {summary.result}
-                        </strong>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                      {/* Official SEMESTER RESULT row */}
+                      <tr className="bg-slate-50 font-bold">
+                        <td className="border border-[#333333] p-2 text-center" colSpan={2}>
+                          <strong>SEMESTER RESULT</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong>{summary.totalCredits}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center" colSpan={4}>
+                          <strong>SCPA:&nbsp;&nbsp;{summary.scpa.toFixed(2)}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong>{summary.totalMarks}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong>{summary.maxMarks}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong>{summary.grade}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center"></td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong>{summary.creditPoints}</strong>
+                        </td>
+                        <td className="border border-[#333333] p-2 text-center">
+                          <strong style={{ color: summary.result.toLowerCase() === 'passed' ? '#339900' : '#cc0000' }}>
+                            {summary.result}
+                          </strong>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
 

@@ -1,3 +1,5 @@
+export type DegreeLevel = 'UG' | 'PG';
+
 export interface ExamInfo {
   id: string;
   name: string;
@@ -5,6 +7,7 @@ export interface ExamInfo {
   year?: string;
   programmeCategory?: string;
   applicableAdmissionYears?: number[];
+  degreeLevel?: DegreeLevel;
 }
 
 export interface CourseResult {
@@ -21,17 +24,26 @@ export interface CourseResult {
   gradePoint: number;
   creditPoint: number;
   result: 'Passed' | 'Failed' | string;
+  // PG (PGCSS) specific fields
+  theoryInt?: string;
+  theoryExt?: string;
+  practicalInt?: string;
+  practicalExt?: string;
+  gpa?: number;
 }
 
 export interface SemesterSummary {
   totalCredits: number;
-  scpa: number;
+  scpa: number; // or GPA in PG
   totalMarks: number;
   maxMarks: number;
   percentage: number;
   grade: string;
   creditPoints: number;
   result: 'Passed' | 'Failed' | string;
+  // PG specific
+  scale?: '10-point' | '5-point';
+  gpa?: number;
 }
 
 export interface StudentResult {
@@ -45,6 +57,7 @@ export interface StudentResult {
   summary: SemesterSummary;
   isDemo?: boolean;
   rawHtml?: string;
+  degreeLevel?: DegreeLevel;
 }
 
 export interface BatchSummary {
@@ -63,12 +76,14 @@ export interface BatchSummary {
     totalMarks: number;
   };
   gradeDistribution: Record<string, number>;
+  degreeLevel?: DegreeLevel;
 }
 
 export interface BatchResultResponse {
   summary: BatchSummary;
   students: StudentResult[];
   isDemo?: boolean;
+  degreeLevel?: DegreeLevel;
 }
 
 export interface SavedPrn {

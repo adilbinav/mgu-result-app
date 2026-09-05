@@ -18,7 +18,7 @@ import {
   FileSpreadsheet,
   Building
 } from 'lucide-react';
-import { ExamInfo, BatchResultResponse, StudentResult } from '@/lib/types';
+import { ExamInfo, BatchResultResponse, StudentResult, DegreeLevel } from '@/lib/types';
 import { MarksheetPrint } from './MarksheetPrint';
 import { generateClassRange } from '@/lib/student-utils';
 
@@ -39,6 +39,8 @@ interface BatchResultViewProps {
   exams: ExamInfo[];
   isLoadingExams: boolean;
   demoMode: boolean;
+  degreeLevel?: DegreeLevel;
+  setDegreeLevel?: (val: DegreeLevel) => void;
   initialStartPrn?: string;
   initialEndPrn?: string;
   initialExamId?: string;
@@ -48,15 +50,21 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
   exams,
   isLoadingExams,
   demoMode,
+  degreeLevel = 'UG',
+  setDegreeLevel,
   initialStartPrn,
   initialEndPrn,
   initialExamId,
 }) => {
+  const isPg = degreeLevel === 'PG';
+  const defaultStart = isPg ? '230011018561' : '210021000001';
+  const defaultEnd = isPg ? '230011018570' : '210021000015';
+
   const [selectedAdmissionYear, setSelectedAdmissionYear] = useState<string>('ALL');
   const [autoDetectedYear, setAutoDetectedYear] = useState<number | null>(null);
   const [selectedExamId, setSelectedExamId] = useState<string>(initialExamId || '');
-  const [startPrn, setStartPrn] = useState<string>(initialStartPrn || '210021000001');
-  const [endPrn, setEndPrn] = useState<string>(initialEndPrn || '210021000015');
+  const [startPrn, setStartPrn] = useState<string>(initialStartPrn || defaultStart);
+  const [endPrn, setEndPrn] = useState<string>(initialEndPrn || defaultEnd);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [batchData, setBatchData] = useState<BatchResultResponse | null>(null);
@@ -109,12 +117,28 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
   // Selected student for detail popup modal
   const [inspectedStudent, setInspectedStudent] = useState<StudentResult | null>(null);
 
+  // Synchronize start/end PRN and reset batch when switching degree level
+  useEffect(() => {
+    const isPreviousUgDefault = startPrn === '210021000001' && endPrn === '210021000015';
+    const isPreviousPgDefault = startPrn === '230011018561' && endPrn === '230011018570';
+    if (isPg && isPreviousUgDefault) {
+      setStartPrn('230011018561');
+      setEndPrn('230011018570');
+    } else if (!isPg && isPreviousPgDefault) {
+      setStartPrn('210021000001');
+      setEndPrn('210021000015');
+    }
+    setBatchData(null);
+    setError(null);
+  }, [degreeLevel]);
+
   useEffect(() => {
     if (exams.length > 0 && !selectedExamId) {
-      const defaultExam = exams.find(e => e.id === '114') || exams[0];
+      const targetId = isPg ? '119' : '114';
+      const defaultExam = exams.find(e => e.id === targetId) || exams[0];
       setSelectedExamId(defaultExam.id);
     }
-  }, [exams, selectedExamId]);
+  }, [exams, selectedExamId, isPg]);
 
   const handleFetchBatch = async (e?: React.FormEvent, customStart?: string, customEnd?: string) => {
     if (e) e.preventDefault();
@@ -143,6 +167,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
           startPrn: sPrn.trim(),
           endPrn: ePrn.trim(),
           demoMode,
+          degreeLevel,
         }),
       });
 
@@ -160,21 +185,28 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
   };
 
   const handleFillSample = () => {
-    setStartPrn('210021000001');
-    setEndPrn('210021000015');
-    handleFetchBatch(undefined, '210021000001', '210021000015');
+    if (isPg) {
+      setStartPrn('230011018561');
+      setEndPrn('230011018570');
+      handleFetchBatch(undefined, '230011018561', '230011018570');
+    } else {
+      setStartPrn('210021000001');
+      setEndPrn('210021000015');
+      handleFetchBatch(undefined, '210021000001', '210021000015');
+    }
   };
 
   const handleExportCsv = () => {
     if (!batchData || batchData.students.length === 0) return;
 
+    const scoreLabel = isPg ? 'GPA (5-point Scale)' : 'SCPA (10-point Scale)';
     const headers = [
       'Rank',
       'PRN',
       'Student Name',
       'Programme',
       'Exam Centre',
-      'SCPA',
+      scoreLabel,
       'Grade',
       'Percentage',
       'Total Marks',
@@ -188,7 +220,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
       `"${s.name}"`,
       `"${s.programme}"`,
       `"${s.examCentre}"`,
-      s.summary.scpa.toFixed(2),
+      (s.summary.gpa ?? s.summary.scpa).toFixed(2),
       s.summary.grade,
       `${s.summary.percentage}%`,
       s.summary.totalMarks,
@@ -201,7 +233,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `MGU_Batch_Results_${startPrn}_to_${endPrn}.csv`);
+    link.setAttribute('download', `MGU_${degreeLevel}_Batch_Results_${startPrn}_to_${endPrn}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -222,8 +254,8 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
         return matchesSearch && matchesStatus;
       })
       .sort((a, b) => {
-        let valA: any = a.summary.scpa;
-        let valB: any = b.summary.scpa;
+        let valA: any = a.summary.gpa ?? a.summary.scpa;
+        let valB: any = b.summary.gpa ?? b.summary.scpa;
 
         if (sortField === 'name') {
           valA = a.name.toLowerCase();
@@ -372,7 +404,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                 type="text"
                 value={startPrn}
                 onChange={e => setStartPrn(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="210021000001"
+                placeholder={isPg ? "230011018561" : "210021000001"}
                 className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-mono font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-sm"
               />
             </div>
@@ -388,14 +420,14 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1"
                 >
                   <Sparkles className="w-3 h-3" />
-                  Auto-fill Range (15 Students)
+                  <span>{isPg ? 'Auto-fill PG Range (10 Students)' : 'Auto-fill Range (15 Students)'}</span>
                 </button>
               </div>
               <input
                 type="text"
                 value={endPrn}
                 onChange={e => setEndPrn(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="210021000015"
+                placeholder={isPg ? "230011018570" : "210021000015"}
                 className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-mono font-semibold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-sm"
               />
             </div>
@@ -460,22 +492,24 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                 {batchData.summary.topper?.name || 'N/A'}
               </div>
               <div className="text-xs text-amber-900 mt-1 font-semibold flex items-center gap-2">
-                <span>SCPA: {batchData.summary.highestScpa.toFixed(2)}</span>
-                <span>({batchData.summary.topper?.totalMarks} Marks)</span>
+                <span>{isPg ? 'GPA' : 'SCPA'}: {batchData.summary.highestScpa.toFixed(2)}</span>
+                {!isPg && batchData.summary.topper?.totalMarks ? (
+                  <span>({batchData.summary.topper.totalMarks} Marks)</span>
+                ) : null}
               </div>
             </div>
 
-            {/* Average SCPA */}
+            {/* Average Score (SCPA / GPA) */}
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
               <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500">
-                <span>Average SCPA</span>
+                <span>{isPg ? 'Average GPA' : 'Average SCPA'}</span>
                 <Users className="w-4 h-4 text-blue-500" />
               </div>
               <div className="text-2xl sm:text-3xl font-black text-blue-900 mt-2">
                 {batchData.summary.averageScpa.toFixed(2)}
               </div>
               <div className="text-xs text-slate-500 mt-1 font-medium">
-                Out of 10.0 Grade Points
+                {isPg ? 'Out of 5.00 Grade Points (PGCSS)' : 'Out of 10.00 Grade Points (CBCSS)'}
               </div>
             </div>
 
@@ -497,10 +531,10 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
           {/* Grade Distribution Bar */}
           <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm">
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
-              Grade Distribution
+              Grade Distribution ({isPg ? '5-Point Scale' : '10-Point Scale'})
             </h4>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
-              {['A+', 'A', 'B+', 'B', 'C', 'F'].map(grade => {
+            <div className={`grid gap-2 text-center ${isPg ? 'grid-cols-4 sm:grid-cols-7' : 'grid-cols-3 sm:grid-cols-6'}`}>
+              {(isPg ? ['A+', 'A', 'B', 'C', 'D', 'E', 'F'] : ['A+', 'A', 'B+', 'B', 'C', 'F']).map(grade => {
                 const count = batchData.summary.gradeDistribution[grade] || 0;
                 const pct = batchData.summary.totalFound > 0 ? (count / batchData.summary.totalFound) * 100 : 0;
                 return (
@@ -601,10 +635,10 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
 
                       <div className="text-right shrink-0">
                         <div className="text-base font-extrabold text-blue-700">
-                          {s.summary.scpa.toFixed(2)}
+                          {(s.summary.gpa ?? s.summary.scpa).toFixed(2)}
                         </div>
                         <span className="text-[10px] text-slate-400 font-semibold block -mt-0.5">
-                          SCPA
+                          {isPg ? 'GPA' : 'SCPA'}
                         </span>
                       </div>
                     </div>
@@ -615,7 +649,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                           Grade {s.summary.grade}
                         </span>
                         <span className="text-slate-600 font-medium text-[11px]">
-                          {s.summary.totalMarks} <span className="text-slate-400">/{s.summary.maxMarks}</span>
+                          {isPg ? (s.summary.totalMarks > 0 ? `${s.summary.totalMarks} / ${s.summary.maxMarks}` : 'PGCSS Scale') : `${s.summary.totalMarks} / ${s.summary.maxMarks}`}
                         </span>
                         <span
                           className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${
@@ -670,7 +704,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                       onClick={() => toggleSort('scpa')}
                     >
                       <div className="flex items-center justify-center gap-1">
-                        <span>SCPA</span>
+                        <span>{isPg ? 'GPA' : 'SCPA'}</span>
                         <ArrowUpDown className="w-3 h-3 text-slate-400" />
                       </div>
                     </th>
@@ -679,7 +713,7 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                       onClick={() => toggleSort('totalMarks')}
                     >
                       <div className="flex items-center justify-center gap-1">
-                        <span>Marks</span>
+                        <span>{isPg ? 'Marks / Scale' : 'Marks'}</span>
                         <ArrowUpDown className="w-3 h-3 text-slate-400" />
                       </div>
                     </th>
@@ -691,7 +725,6 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                 <tbody className="divide-y divide-slate-200">
                   {sortedStudents.map((s, idx) => {
                     const isTop1 = idx === 0;
-                    const isTop3 = idx < 3;
                     return (
                       <tr key={s.prn} className="hover:bg-slate-50/80 transition-colors">
                         <td className="px-4 py-3 text-center">
@@ -718,10 +751,10 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                           {s.name}
                         </td>
                         <td className="px-4 py-3 text-center font-extrabold text-blue-700 text-base">
-                          {s.summary.scpa.toFixed(2)}
+                          {(s.summary.gpa ?? s.summary.scpa).toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-center font-medium text-slate-700">
-                          {s.summary.totalMarks} <span className="text-xs text-slate-400">/{s.summary.maxMarks}</span>
+                          {isPg ? (s.summary.totalMarks > 0 ? `${s.summary.totalMarks} / ${s.summary.maxMarks}` : 'PGCSS Scale') : `${s.summary.totalMarks} / ${s.summary.maxMarks}`}
                         </td>
                         <td className="px-3 py-3 text-center">
                           <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-md border ${getGradeBadge(s.summary.grade)}`}>
@@ -778,12 +811,22 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
             {/* Student mini breakdown */}
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4 sm:mb-6 text-center">
               <div className="bg-blue-50 p-2.5 sm:p-3 rounded-xl border border-blue-100">
-                <div className="text-[10px] sm:text-xs uppercase text-blue-600 font-bold">SCPA</div>
-                <div className="text-xl sm:text-2xl font-black text-blue-900">{inspectedStudent.summary.scpa.toFixed(2)}</div>
+                <div className="text-[10px] sm:text-xs uppercase text-blue-600 font-bold">
+                  {isPg || inspectedStudent.degreeLevel === 'PG' ? 'GPA' : 'SCPA'}
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-blue-900">
+                  {(inspectedStudent.summary.gpa ?? inspectedStudent.summary.scpa).toFixed(2)}
+                </div>
               </div>
               <div className="bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200">
-                <div className="text-[10px] sm:text-xs uppercase text-slate-500 font-bold">Total Marks</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-800">{inspectedStudent.summary.totalMarks} <span className="text-xs font-normal text-slate-400">/{inspectedStudent.summary.maxMarks}</span></div>
+                <div className="text-[10px] sm:text-xs uppercase text-slate-500 font-bold">
+                  {isPg || inspectedStudent.degreeLevel === 'PG' ? 'Grading Scale' : 'Total Marks'}
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-slate-800">
+                  {isPg || inspectedStudent.degreeLevel === 'PG'
+                    ? '5.00 Scale'
+                    : <>{inspectedStudent.summary.totalMarks} <span className="text-xs font-normal text-slate-400">/{inspectedStudent.summary.maxMarks}</span></>}
+                </div>
               </div>
               <div className="bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200">
                 <div className="text-[10px] sm:text-xs uppercase text-slate-500 font-bold">Result</div>
@@ -813,12 +856,21 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-1 text-center text-[10px] bg-slate-50 p-1.5 rounded">
-                    <div><span className="text-slate-400 block font-semibold">ESA</span><span className="font-bold">{c.esaMarks}/{c.esaMax}</span></div>
-                    <div><span className="text-slate-400 block font-semibold">ISA</span><span className="font-bold">{c.isaMarks}/{c.isaMax}</span></div>
-                    <div><span className="text-slate-400 block font-semibold">Total</span><span className="font-bold text-blue-700">{c.totalMarks}</span></div>
-                    <div><span className="text-slate-400 block font-semibold">Credits</span><span className="font-bold">{c.credit}</span></div>
-                  </div>
+                  {isPg || inspectedStudent.degreeLevel === 'PG' ? (
+                    <div className="grid grid-cols-4 gap-1 text-center text-[10px] bg-slate-50 p-1.5 rounded">
+                      <div><span className="text-slate-400 block font-semibold">Theory</span><span className="font-bold">{c.theoryExt || '---'}</span></div>
+                      <div><span className="text-slate-400 block font-semibold">Practical</span><span className="font-bold">{c.practicalExt || '---'}</span></div>
+                      <div><span className="text-slate-400 block font-semibold">GPA</span><span className="font-bold text-blue-700">{c.gpa !== undefined ? c.gpa.toFixed(2) : (c.gradePoint || '---')}</span></div>
+                      <div><span className="text-slate-400 block font-semibold">Credits</span><span className="font-bold">{c.credit || 4}</span></div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-1 text-center text-[10px] bg-slate-50 p-1.5 rounded">
+                      <div><span className="text-slate-400 block font-semibold">ESA</span><span className="font-bold">{c.esaMarks}/{c.esaMax}</span></div>
+                      <div><span className="text-slate-400 block font-semibold">ISA</span><span className="font-bold">{c.isaMarks}/{c.isaMax}</span></div>
+                      <div><span className="text-slate-400 block font-semibold">Total</span><span className="font-bold text-blue-700">{c.totalMarks}</span></div>
+                      <div><span className="text-slate-400 block font-semibold">Credits</span><span className="font-bold">{c.credit}</span></div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -827,26 +879,54 @@ export const BatchResultView: React.FC<BatchResultViewProps> = ({
             <div className="hidden sm:block overflow-x-auto border border-slate-200 rounded-xl">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 text-slate-600 uppercase font-semibold border-b">
-                  <tr>
-                    <th className="p-2.5">Code</th>
-                    <th className="p-2.5">Course</th>
-                    <th className="p-2.5 text-center">Credits</th>
-                    <th className="p-2.5 text-center">ESA</th>
-                    <th className="p-2.5 text-center">ISA</th>
-                    <th className="p-2.5 text-center">Total</th>
-                    <th className="p-2.5 text-center">Grade</th>
-                    <th className="p-2.5 text-center">Status</th>
-                  </tr>
+                  {isPg || inspectedStudent.degreeLevel === 'PG' ? (
+                    <tr>
+                      <th className="p-2.5">Code</th>
+                      <th className="p-2.5">Course</th>
+                      <th className="p-2.5 text-center">Theory INT</th>
+                      <th className="p-2.5 text-center">Theory EXT</th>
+                      <th className="p-2.5 text-center">Practical INT</th>
+                      <th className="p-2.5 text-center">Practical EXT</th>
+                      <th className="p-2.5 text-center">GPA</th>
+                      <th className="p-2.5 text-center">Grade</th>
+                      <th className="p-2.5 text-center">Status</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th className="p-2.5">Code</th>
+                      <th className="p-2.5">Course</th>
+                      <th className="p-2.5 text-center">Credits</th>
+                      <th className="p-2.5 text-center">ESA</th>
+                      <th className="p-2.5 text-center">ISA</th>
+                      <th className="p-2.5 text-center">Total</th>
+                      <th className="p-2.5 text-center">Grade</th>
+                      <th className="p-2.5 text-center">Status</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {inspectedStudent.courses.map((c, i) => (
                     <tr key={i}>
                       <td className="p-2.5 font-mono text-slate-700">{c.code}</td>
                       <td className="p-2.5 font-medium text-slate-900">{c.title}</td>
-                      <td className="p-2.5 text-center">{c.credit}</td>
-                      <td className="p-2.5 text-center">{c.esaMarks}/{c.esaMax}</td>
-                      <td className="p-2.5 text-center">{c.isaMarks}/{c.isaMax}</td>
-                      <td className="p-2.5 text-center font-bold">{c.totalMarks}</td>
+                      {isPg || inspectedStudent.degreeLevel === 'PG' ? (
+                        <>
+                          <td className="p-2.5 text-center">{c.theoryInt || '---'}</td>
+                          <td className="p-2.5 text-center">{c.theoryExt || '---'}</td>
+                          <td className="p-2.5 text-center">{c.practicalInt || '---'}</td>
+                          <td className="p-2.5 text-center">{c.practicalExt || '---'}</td>
+                          <td className="p-2.5 text-center font-bold text-blue-700">
+                            {c.gpa !== undefined ? c.gpa.toFixed(2) : (c.gradePoint || '---')}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-2.5 text-center">{c.credit}</td>
+                          <td className="p-2.5 text-center">{c.esaMarks}/{c.esaMax}</td>
+                          <td className="p-2.5 text-center">{c.isaMarks}/{c.isaMax}</td>
+                          <td className="p-2.5 text-center font-bold">{c.totalMarks}</td>
+                        </>
+                      )}
                       <td className="p-2.5 text-center">
                         <span className={`px-1.5 py-0.5 rounded text-[11px] font-bold ${getGradeBadge(c.grade)}`}>
                           {c.grade}

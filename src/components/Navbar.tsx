@@ -3,6 +3,8 @@
 import React from 'react';
 import { GraduationCap, Users, Sparkles, Server, CheckCircle2, AlertCircle, Calculator, ArrowRightLeft } from 'lucide-react';
 
+import { DegreeLevel } from '@/lib/types';
+
 export type NavTab = 'single' | 'batch' | 'cgpa' | 'compare';
 
 interface NavbarProps {
@@ -11,6 +13,8 @@ interface NavbarProps {
   isLive: boolean;
   demoMode: boolean;
   setDemoMode: (val: boolean) => void;
+  degreeLevel: DegreeLevel;
+  setDegreeLevel: (val: DegreeLevel) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -19,6 +23,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   isLive,
   demoMode,
   setDemoMode,
+  degreeLevel,
+  setDegreeLevel,
 }) => {
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm no-print">
@@ -26,7 +32,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16 sm:h-20 gap-2">
           {/* Brand */}
           <div className="flex items-center space-x-3 shrink-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-blue-700 via-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr ${
+              degreeLevel === 'PG'
+                ? 'from-indigo-700 via-purple-600 to-indigo-800'
+                : 'from-blue-700 via-blue-600 to-indigo-600'
+            } flex items-center justify-center text-white shadow-md shadow-blue-500/20`}>
               <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
             <div>
@@ -34,14 +44,46 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <h1 className="font-bold text-base sm:text-xl tracking-tight text-slate-900">
                   MG University Results
                 </h1>
-                <span className="hidden md:inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                  CBCSS Portal
+                <span className={`hidden md:inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                  degreeLevel === 'PG' ? 'bg-indigo-100 text-indigo-800' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {degreeLevel === 'PG' ? 'PGCSS (PG)' : 'CBCSS (UG)'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 hidden lg:block">
                 Mahatma Gandhi University, Kottayam, Kerala
               </p>
             </div>
+          </div>
+
+          {/* Degree Level Selector (UG / PG Switcher) */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold shadow-inner">
+            <button
+              type="button"
+              onClick={() => setDegreeLevel('UG')}
+              title="Switch to Undergraduate (CBCSS) examinations"
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all ${
+                degreeLevel === 'UG'
+                  ? 'bg-blue-600 text-white shadow-sm font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🎓 UG</span>
+              <span className="hidden xl:inline text-[10px] opacity-90">(CBCSS)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDegreeLevel('PG')}
+              title="Switch to Postgraduate (PGCSS) examinations"
+              className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all ${
+                degreeLevel === 'PG'
+                  ? 'bg-indigo-600 text-white shadow-sm font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>🏛️ PG</span>
+              <span className="hidden xl:inline text-[10px] opacity-90">(PGCSS)</span>
+            </button>
           </div>
 
           {/* Navigation Tabs (Desktop & Tablet) */}

@@ -20,7 +20,7 @@ import {
   Users
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { ExamInfo, StudentResult } from '@/lib/types';
+import { ExamInfo, StudentResult, DegreeLevel } from '@/lib/types';
 import { MarksheetPrint } from './MarksheetPrint';
 import { OfficialResultView } from './OfficialResultView';
 import { GradeBoosterCard } from './GradeBoosterCard';
@@ -31,6 +31,8 @@ interface SingleResultViewProps {
   exams: ExamInfo[];
   isLoadingExams: boolean;
   demoMode: boolean;
+  degreeLevel?: DegreeLevel;
+  setDegreeLevel?: (val: DegreeLevel) => void;
   onNavigateToBatch?: (startPrn: string, endPrn: string, examId: string) => void;
   onSetLastCheckedScpa?: (scpa: number, examName?: string) => void;
 }
@@ -62,6 +64,8 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
   exams,
   isLoadingExams,
   demoMode,
+  degreeLevel = 'UG',
+  setDegreeLevel,
   onNavigateToBatch,
   onSetLastCheckedScpa,
 }) => {
@@ -153,6 +157,7 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
           examId: queryExamId,
           prn: queryPrn.trim(),
           demoMode,
+          degreeLevel,
         }),
       });
 
@@ -165,7 +170,8 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
       const examObj = exams.find(x => x.id === queryExamId);
       const studentData: StudentResult = {
         ...json.data,
-        examName: examObj ? examObj.name : 'MG University CBCSS Examination',
+        degreeLevel: json.data.degreeLevel || degreeLevel,
+        examName: examObj ? examObj.name : (degreeLevel === 'PG' ? 'MG University PGCSS Examination' : 'MG University CBCSS Examination'),
       };
 
       setResult(studentData);
@@ -363,21 +369,32 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
                   Permanent Register Number (PRN) <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => fillSamplePrn('210021000001', '114')}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1"
-                  >
-                    <Sparkles className="w-3 h-3 text-blue-500" />
-                    Try Real Student PRN (210021000001)
-                  </button>
+                  {degreeLevel === 'PG' ? (
+                    <button
+                      type="button"
+                      onClick={() => fillSamplePrn('230011018561', '119')}
+                      className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3 text-indigo-500" />
+                      Try Real PG Student PRN (230011018561)
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fillSamplePrn('210021000001', '114')}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3 text-blue-500" />
+                      Try Real Student PRN (210021000001)
+                    </button>
+                  )}
                 </div>
               </div>
               <input
                 id="prn-input"
                 type="text"
                 maxLength={14}
-                placeholder="Enter 12-digit PRN, e.g. 210021000001"
+                placeholder={degreeLevel === 'PG' ? "Enter 12-digit PG PRN, e.g. 230011018561" : "Enter 12-digit PRN, e.g. 210021000001"}
                 value={prn}
                 onChange={e => setPrn(e.target.value.replace(/[^0-9]/g, ''))}
                 className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2.5 text-base font-mono font-semibold text-slate-900 tracking-wider placeholder:tracking-normal placeholder:font-sans placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm"
@@ -527,18 +544,23 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
 
               {/* Summary Cards */}
               <div className="lg:col-span-5 grid grid-cols-2 gap-3">
-                {/* SCPA Card */}
+                {/* SCPA / GPA Card */}
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50/50 border border-blue-100 p-4 rounded-xl text-center">
                   <div className="text-xs uppercase font-bold tracking-wider text-blue-600">
-                    SCPA / SGPA
+                    {result.degreeLevel === 'PG' ? 'Semester GPA' : 'SCPA / SGPA'}
                   </div>
                   <div className="text-3xl font-extrabold text-blue-900 mt-1">
                     {result.summary.scpa.toFixed(2)}
                   </div>
-                  <div className="mt-1">
+                  <div className="mt-1 flex items-center justify-center gap-1.5">
                     <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-full border ${getGradeBadge(result.summary.grade)}`}>
                       Grade {result.summary.grade}
                     </span>
+                    {result.degreeLevel === 'PG' && (
+                      <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                        5.0 Scale
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -615,92 +637,162 @@ export const SingleResultView: React.FC<SingleResultViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-1.5 text-center text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <div>
-                      <div className="text-[10px] uppercase font-bold text-slate-400">ESA</div>
-                      <div className="font-semibold text-slate-800">{course.esaMarks} <span className="text-[10px] text-slate-400">/{course.esaMax}</span></div>
+                  {result.degreeLevel === 'PG' ? (
+                    <div className="grid grid-cols-3 gap-1.5 text-center text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Theory</div>
+                        <div className="font-semibold text-slate-800">{course.theoryInt || '---'} / {course.theoryExt || '---'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Practical</div>
+                        <div className="font-semibold text-slate-800">{course.practicalInt || '---'} / {course.practicalExt || '---'}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Course GPA</div>
+                        <div className="font-bold text-blue-700">{course.gpa !== undefined ? course.gpa.toFixed(2) : '---'}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-[10px] uppercase font-bold text-slate-400">ISA</div>
-                      <div className="font-semibold text-slate-800">{course.isaMarks} <span className="text-[10px] text-slate-400">/{course.isaMax}</span></div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-1.5 text-center text-xs bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">ESA</div>
+                        <div className="font-semibold text-slate-800">{course.esaMarks} <span className="text-[10px] text-slate-400">/{course.esaMax}</span></div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">ISA</div>
+                        <div className="font-semibold text-slate-800">{course.isaMarks} <span className="text-[10px] text-slate-400">/{course.isaMax}</span></div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Total</div>
+                        <div className="font-bold text-blue-700">{course.totalMarks} <span className="text-[10px] text-slate-400">/{course.maxMarks}</span></div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-slate-400">Credits</div>
+                        <div className="font-semibold text-slate-800">{course.credit} <span className="text-[10px] text-slate-400">({course.creditPoint} CP)</span></div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Total</div>
-                      <div className="font-bold text-blue-700">{course.totalMarks} <span className="text-[10px] text-slate-400">/{course.maxMarks}</span></div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] uppercase font-bold text-slate-400">Credits</div>
-                      <div className="font-semibold text-slate-800">{course.credit} <span className="text-[10px] text-slate-400">({course.creditPoint} CP)</span></div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               ))}
             </div>
 
             {/* Desktop / Tablet Table (hidden sm:block) */}
             <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
-                  <tr>
-                    <th className="px-4 py-3">Code</th>
-                    <th className="px-4 py-3">Course Title</th>
-                    <th className="px-3 py-3 text-center">Credit</th>
-                    <th className="px-3 py-3 text-center">External (ESA)</th>
-                    <th className="px-3 py-3 text-center">Internal (ISA)</th>
-                    <th className="px-3 py-3 text-center">Total / Max</th>
-                    <th className="px-3 py-3 text-center">Grade</th>
-                    <th className="px-3 py-3 text-center">GP</th>
-                    <th className="px-3 py-3 text-center">CP</th>
-                    <th className="px-4 py-3 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
-                  {result.courses.map((course, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
-                        {course.code}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-slate-900 max-w-xs">
-                        {course.title}
-                      </td>
-                      <td className="px-3 py-3 text-center font-semibold text-slate-700">
-                        {course.credit}
-                      </td>
-                      <td className="px-3 py-3 text-center font-medium text-slate-700">
-                        {course.esaMarks} <span className="text-xs text-slate-400">/{course.esaMax}</span>
-                      </td>
-                      <td className="px-3 py-3 text-center font-medium text-slate-700">
-                        {course.isaMarks} <span className="text-xs text-slate-400">/{course.isaMax}</span>
-                      </td>
-                      <td className="px-3 py-3 text-center font-bold text-slate-900">
-                        {course.totalMarks} <span className="text-xs font-normal text-slate-400">/{course.maxMarks}</span>
-                      </td>
-                      <td className="px-3 py-3 text-center">
-                        <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-md border ${getGradeBadge(course.grade)}`}>
-                          {course.grade}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 text-center text-slate-600 font-medium">
-                        {course.gradePoint}
-                      </td>
-                      <td className="px-3 py-3 text-center text-slate-600 font-medium">
-                        {course.creditPoint}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <span
-                          className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
-                            course.result.toLowerCase() === 'passed'
-                              ? 'text-emerald-700 bg-emerald-50'
-                              : 'text-rose-700 bg-rose-50'
-                          }`}
-                        >
-                          {course.result}
-                        </span>
-                      </td>
+              {result.degreeLevel === 'PG' ? (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3">Code</th>
+                      <th className="px-4 py-3">Course Title</th>
+                      <th className="px-3 py-3 text-center">Theory (INT / EXT)</th>
+                      <th className="px-3 py-3 text-center">Practical (INT / EXT)</th>
+                      <th className="px-3 py-3 text-center">GPA</th>
+                      <th className="px-3 py-3 text-center">Grade</th>
+                      <th className="px-4 py-3 text-center">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {result.courses.map((course, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
+                          {course.code}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-900 max-w-xs">
+                          {course.title}
+                        </td>
+                        <td className="px-3 py-3 text-center font-medium text-slate-700">
+                          {course.theoryInt || '---'} / {course.theoryExt || '---'}
+                        </td>
+                        <td className="px-3 py-3 text-center font-medium text-slate-700">
+                          {course.practicalInt || '---'} / {course.practicalExt || '---'}
+                        </td>
+                        <td className="px-3 py-3 text-center font-bold text-blue-700">
+                          {course.gpa !== undefined ? course.gpa.toFixed(2) : '---'}
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-md border ${getGradeBadge(course.grade)}`}>
+                            {course.grade}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span
+                            className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                              course.result.toLowerCase() === 'passed'
+                                ? 'text-emerald-700 bg-emerald-50'
+                                : 'text-rose-700 bg-rose-50'
+                            }`}
+                          >
+                            {course.result}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3">Code</th>
+                      <th className="px-4 py-3">Course Title</th>
+                      <th className="px-3 py-3 text-center">Credit</th>
+                      <th className="px-3 py-3 text-center">External (ESA)</th>
+                      <th className="px-3 py-3 text-center">Internal (ISA)</th>
+                      <th className="px-3 py-3 text-center">Total / Max</th>
+                      <th className="px-3 py-3 text-center">Grade</th>
+                      <th className="px-3 py-3 text-center">GP</th>
+                      <th className="px-3 py-3 text-center">CP</th>
+                      <th className="px-4 py-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {result.courses.map((course, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-slate-700">
+                          {course.code}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-slate-900 max-w-xs">
+                          {course.title}
+                        </td>
+                        <td className="px-3 py-3 text-center font-semibold text-slate-700">
+                          {course.credit}
+                        </td>
+                        <td className="px-3 py-3 text-center font-medium text-slate-700">
+                          {course.esaMarks} <span className="text-xs text-slate-400">/{course.esaMax}</span>
+                        </td>
+                        <td className="px-3 py-3 text-center font-medium text-slate-700">
+                          {course.isaMarks} <span className="text-xs text-slate-400">/{course.isaMax}</span>
+                        </td>
+                        <td className="px-3 py-3 text-center font-bold text-slate-900">
+                          {course.totalMarks} <span className="text-xs font-normal text-slate-400">/{course.maxMarks}</span>
+                        </td>
+                        <td className="px-3 py-3 text-center">
+                          <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-md border ${getGradeBadge(course.grade)}`}>
+                            {course.grade}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-center text-slate-600 font-medium">
+                          {course.gradePoint}
+                        </td>
+                        <td className="px-3 py-3 text-center text-slate-600 font-medium">
+                          {course.creditPoint}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span
+                            className={`text-xs font-bold uppercase px-2 py-0.5 rounded ${
+                              course.result.toLowerCase() === 'passed'
+                                ? 'text-emerald-700 bg-emerald-50'
+                                : 'text-rose-700 bg-rose-50'
+                            }`}
+                          >
+                            {course.result}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* Table Footer Totals */}
